@@ -20,7 +20,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       CSC_LINK: ${{ secrets.CSC_LINK }}
       CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-      CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,8 +57,20 @@ jobs:
       - name: Build desktop server bundle
         run: node scripts/build-desktop.mjs
 
-      - name: Package and publish macOS release
-        run: npx electron-builder --mac zip dmg --arm64 --publish always
+      - name: Package macOS release (unsigned)
+        run: npx electron-builder --mac zip dmg --arm64 --publish never
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Inkquay ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            desktop/release/Inkquay-*.dmg
+            desktop/release/Inkquay-*.zip
+            desktop/release/latest-mac.yml
+            desktop/release/*.blockmap
 
       - name: Summarize
         run: |
