@@ -58,7 +58,15 @@ jobs:
         run: node scripts/build-desktop.mjs
 
       - name: Package macOS release (unsigned)
-        run: npx electron-builder --mac zip dmg --arm64 --publish never
+        shell: bash
+        run: |
+          set +e
+          npx electron-builder --mac zip dmg --arm64 --publish never 2>&1 | tee /tmp/package.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            tail -60 /tmp/package.log | sed 's/^/::error::/'
+          fi
+          exit "$status"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
