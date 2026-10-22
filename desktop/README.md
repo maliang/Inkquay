@@ -42,6 +42,7 @@ desktop/
 - macOS 菜单「检查更新…」可手动触发
 - 开发版本不检查更新
 - 自动更新要求签名；正式发布请在 GitHub Secrets 配 `CSC_LINK`、`CSC_KEY_PASSWORD` 并做 notarization
+- 未签名构建会提示更新，但安装可能失败，此时会自动打开 Releases 下载页作为回退
 
 ## 限制
 

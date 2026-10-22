@@ -18,7 +18,6 @@ jobs:
     runs-on: macos-14
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,6 +53,17 @@ jobs:
 
       - name: Build desktop server bundle
         run: node scripts/build-desktop.mjs
+
+      - name: Configure optional code signing
+        run: |
+          if [ -n "${{ secrets.CSC_LINK }}" ]; then
+            echo "CSC_LINK=${{ secrets.CSC_LINK }}" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=${{ secrets.CSC_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "Code signing enabled"
+          else
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+            echo "No signing certificate; building unsigned"
+          fi
 
       - name: Package macOS release (unsigned)
         shell: bash

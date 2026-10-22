@@ -55,7 +55,7 @@ GitHub 仓库：[maliang/Inkquay](https://github.com/maliang/Inkquay)
 - macOS 菜单「检查更新…」可手动检查
 - 开发版不检查更新
 
-> macOS 的 Squirrel 自动更新要求 App 被签名。当前构建会使用本机可用的 Apple Development 证书；正式分发建议在 GitHub Secrets 配置 `CSC_LINK` / `CSC_KEY_PASSWORD`，并补 notarization。未签名构建只能手动安装新 DMG。
+> macOS 的 Squirrel 自动更新要求 App 被签名。GitHub Actions 默认构建未签名版本（可通过 Release 手动安装）；要启用真正的自动升级，请在仓库 Secrets 配置 `CSC_LINK` / `CSC_KEY_PASSWORD`，并在需要时补 notarization。配置后 workflow 会自动签名；未签名版本的下载失败会回退到打开 Releases 下载页。
 
 ## 桌面版（macOS）
 
