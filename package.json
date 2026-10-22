@@ -1,0 +1,89 @@
+{
+  "name": "inkquay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Inkquay · 私家写手，本地优先的 AI 长篇创作工作台",
+  "packageManager": "pnpm@10.34.7",
+  "scripts": {
+    "dev": "pnpm -C software dev",
+    "build": "pnpm -C software build",
+    "start": "pnpm -C software start",
+    "typecheck": "pnpm -C software typecheck",
+    "test": "pnpm -C software test",
+    "test:ui": "pnpm -C software test:ui",
+    "seed": "pnpm -C software seed",
+    "desktop:prepare": "pnpm build && node scripts/build-desktop.mjs",
+    "desktop": "pnpm desktop:prepare && node scripts/launch-desktop.mjs",
+    "desktop:pack": "pnpm desktop:prepare && electron-builder --mac dir",
+    "desktop:dmg": "pnpm desktop:prepare && electron-builder --mac dmg",
+    "desktop:open": "open \"desktop/release/mac-arm64/私家写手.app\"",
+    "desktop:launch": "node scripts/launch-desktop.mjs",
+    "desktop:test": "pnpm desktop:prepare && node scripts/desktop-test.mjs"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2"
+  },
+  "main": "desktop/main.cjs",
+  "build": {
+    "appId": "com.inkquay.writer",
+    "productName": "Inkquay",
+    "copyright": "Copyright © 2026 马良",
+    "asar": true,
+    "npmRebuild": false,
+    "directories": {
+      "output": "desktop/release",
+      "buildResources": "desktop/build"
+    },
+    "files": [
+      "desktop/main.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "desktop/server.cjs",
+        "to": "server.cjs"
+      },
+      {
+        "from": "software/dist",
+        "to": "dist"
+      },
+      {
+        "from": "desktop/build/icon.png",
+        "to": "icon.png"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "desktop/build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "artifactName": "Inkquay-${version}-${arch}.${ext}",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "maliang",
+        "repo": "Inkquay",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "author": "马良",
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}

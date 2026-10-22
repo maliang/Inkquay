@@ -1,0 +1,131 @@
+{
+  "results": [
+    {
+      "step": "toolbar",
+      "name": "斜体生效",
+      "status": "pass"
+    },
+    {
+      "step": "toolbar",
+      "name": "引用（blockquote）生效",
+      "status": "pass"
+    },
+    {
+      "step": "toolbar",
+      "name": "无序列表生效",
+      "status": "pass"
+    },
+    {
+      "step": "toolbar",
+      "name": "工具栏「AI 润色」有提示",
+      "status": "pass"
+    },
+    {
+      "step": "panel-actions",
+      "name": "「搜索章节」点击有提示",
+      "status": "pass",
+      "detail": {
+        "before": 1,
+        "after": 2
+      }
+    },
+    {
+      "step": "panel-actions",
+      "name": "「添加笔记」点击有提示",
+      "status": "pass",
+      "detail": {
+        "before": 2,
+        "after": 3
+      }
+    },
+    {
+      "step": "panel-actions",
+      "name": "「设置」点击有提示",
+      "status": "pass",
+      "detail": {
+        "before": 3,
+        "after": 4
+      }
+    },
+    {
+      "step": "panel-actions",
+      "name": "「账户」点击有提示",
+      "status": "pass",
+      "detail": {
+        "before": 4,
+        "after": 5
+      }
+    },
+    {
+      "step": "panel-actions",
+      "name": "「最近动态-全部」点击有提示",
+      "status": "fail",
+      "detail": {
+        "before": 5,
+        "after": 0
+      }
+    },
+    {
+      "step": "misc-live",
+      "name": "空选区点击工具栏无异常",
+      "status": "pass",
+      "detail": {
+        "wordsBefore": 456
+      }
+    },
+    {
+      "step": "ai-panel-shot",
+      "name": "新生成消息的操作区在 .msg__main 内（预期）",
+      "status": "fail",
+      "detail": {
+        "actionsParentClass": "msg msg--ai",
+        "metaParentClass": "msg msg--ai",
+        "actionsRect": {
+          "x": 1316,
+          "w": 58,
+          "h": 103
+        },
+        "metaRect": {
+          "x": 1382,
+          "w": 42,
+          "h": 54
+        },
+        "actionsText": "插入正文|替换选中|更克制",
+        "metaText": "生成于刚刚 · 使用 DeepSeek V3.2",
+        "actionsInMain": false,
+        "bubbleWidth": 180,
+        "panelWidth": 360
+      }
+    },
+    {
+      "step": "crops-1024",
+      "name": "1024 写作台「阅读时长」单行显示",
+      "status": "fail",
+      "detail": {
+        "text": "约 2 分钟阅读",
+        "w": 10,
+        "h": 91,
+        "lines": 6
+      }
+    },
+    {
+      "step": "crops-1024",
+      "name": "1024 人物卡姓名单行显示",
+      "status": "fail",
+      "detail": {
+        "cardW": 143,
+        "nameH": 46,
+        "lineHeight": "23.2px"
+      }
+    },
+    {
+      "step": "console",
+      "name": "控制台无 error",
+      "status": "pass",
+      "detail": {
+        "errors": []
+      }
+    }
+  ],
+  "console": []
+}

@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0d11">
+  <meta name="description" content="私家写手 —— 用 AI 写长篇、短篇与剧本的创作工作台。">
+  <title>私家写手 · AI 长篇创作工作台</title>
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    (function () {
+      try {
+        var saved = JSON.parse(localStorage.getItem('pw.settings.appearance.v1') || '{}');
+        if (saved.theme) document.documentElement.setAttribute('data-theme', saved.theme);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <!-- ============ Icon sprite ============ -->
+  <svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.5C10.4 4.8 8.3 4 6 4H3v15h4c2 0 3.7.7 5 2 1.3-1.3 3-2 5-2h4V4h-3c-2.3 0-4.4.8-6 2.5Z"/><path d="M12 6.5V21"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="m16.5 3.5 4 4L8 20H4v-4L16.5 3.5Z"/><path d="m14 6 4 4"/><path d="M4 20h16"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="m9 4-6 2v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-clapper" viewBox="0 0 24 24"><path d="m3 8 18-4 1 4L4 12 3 8Z"/><rect x="3" y="8" width="18" height="12" rx="1.5"/><path d="m7 7 .9 3.2M12 6l.9 3.2M17 5l.9 3.2"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15Z"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 21h16"/></symbol>
+    <symbol id="i-focus" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 20V4M6 10l6-6 6 6"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M20 12H4M10 6l-6 6 6 6"/></symbol>
+    <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m20.5 11.5-8.9 8.9a5 5 0 0 1-7.1-7.1l9.2-9.2a3.3 3.3 0 0 1 4.7 4.7l-9.2 9.2a1.7 1.7 0 0 1-2.4-2.4l8.5-8.5"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5M3 17l9 5 9-5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 22c4 0 7-2.8 7-6.7 0-3.3-2-6-4.2-8.3-.6 2-1.7 3.2-3 3.7.2-3.4-1-6.2-3.1-8.7.2 4-1.3 6-3.1 8.2A10 10 0 0 0 5 15.3C5 19.2 8 22 12 22Z"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.4A8.5 8.5 0 1 1 21 11.5Z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+    <symbol id="i-quote" viewBox="0 0 24 24"><path d="M10 11H5.5A2.5 2.5 0 0 1 3 8.5v-1A2.5 2.5 0 0 1 5.5 5H8a2 2 0 0 1 2 2v7a4 4 0 0 1-4 4H5"/><path d="M21 11h-4.5A2.5 2.5 0 0 1 14 8.5v-1A2.5 2.5 0 0 1 16.5 5H19a2 2 0 0 1 2 2v7a4 4 0 0 1-4 4h-1"/></symbol>
+    <symbol id="i-bold" viewBox="0 0 24 24"><path d="M7 4h6a4 4 0 0 1 0 8H7V4Zm0 8h7a4 4 0 0 1 0 8H7v-8Z"/></symbol>
+    <symbol id="i-italic" viewBox="0 0 24 24"><path d="M10 4h8M6 20h8M14 4 10 20"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></symbol>
+    <symbol id="i-comment" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.4A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 11h8M8 8h5"/></symbol>
+    <symbol id="i-columns" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-2"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9h-9a7 7 0 0 0 0 14h2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 12 7-12 7V5Z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></symbol>
+    <symbol id="i-wand" viewBox="0 0 24 24"><path d="m15 4 5 5L8 21H3v-5L15 4Z"/><path d="m13 6 5 5M6 3v4M4 5h4M18 16v4M16 18h4"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-type" viewBox="0 0 24 24"><path d="M4 7V5h16v2M12 5v14M9 19h6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></symbol>
+    <symbol id="i-insert" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.5L6 21V3Z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a4 4 0 0 0 0-8H9a4 4 0 0 1 0-8h6.5"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z"/><path d="m3 7 9 5 9-5M12 12v10"/></symbol>
+    <symbol id="i-blockquote" viewBox="0 0 24 24"><path d="M4 5v14"/><path d="M9 6h11M9 12h11M9 18h7"/></symbol>
+    <symbol id="i-feather" viewBox="0 0 24 24"><path d="M20.2 3.8a6 6 0 0 0-8.5 0L4 11.5V20h8.5l7.7-7.7a6 6 0 0 0 0-8.5Z"/><path d="M15.5 6.5 8 14M18 9l-7 7M4 20l3-3"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 22V3M5 4h14l-3 4 3 4H5"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18h1.5a2.5 2.5 0 0 0 0-5H12a2 2 0 0 1 0-4h5a4 4 0 0 0 4-4c0-2.8-4-5-9-5Z"/><circle cx="7.5" cy="10" r=".8"/><circle cx="10" cy="6.8" r=".8"/><circle cx="14.5" cy="7.2" r=".8"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01M12 7h5M12 17h5"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 8-8M17 6l2 2M15 8l2 2"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v6M15 3v6M6 9h12v2a6 6 0 0 1-6 6 6 6 0 0 1-6-6V9ZM12 17v4"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.6 8.6 2 12 2 12s3.5 7 10 7c1.6 0 3-.3 4.2-.9"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z"/></symbol>
+  </svg>
+
+  <div class="app" id="app">
+    <div class="noise" aria-hidden="true"></div>
+
+    <!-- ============ 左侧图标导航 ============ -->
+    <aside class="rail" aria-label="主导航">
+      <a class="brand" href="#" data-nav="library" aria-label="私家写手首页">
+        <span class="brand__seal">私</span>
+      </a>
+      <nav class="rail-nav">
+        <button class="rail-btn" data-nav="library" type="button" title="作品库">
+          <svg class="icon"><use href="#i-book"></use></svg><span>作品库</span>
+        </button>
+        <button class="rail-btn" data-nav="studio" type="button" title="写作台">
+          <svg class="icon"><use href="#i-pen"></use></svg><span>写作台</span>
+        </button>
+        <button class="rail-btn" data-nav="outline" type="button" title="故事大纲">
+          <svg class="icon"><use href="#i-map"></use></svg><span>大纲</span>
+        </button>
+        <button class="rail-btn" data-nav="codex" type="button" title="人物设定">
+          <svg class="icon"><use href="#i-users"></use></svg><span>设定</span>
+        </button>
+        <button class="rail-btn" data-nav="screenplay" type="button" title="剧本工坊">
+          <svg class="icon"><use href="#i-clapper"></use></svg><span>剧本</span>
+        </button>
+      </nav>
+      <div class="rail-foot">
+        <button class="rail-btn rail-btn--quiet" data-action="settings" type="button" title="设置">
+          <svg class="icon"><use href="#i-settings"></use></svg><span>设置</span>
+        </button>
+        <button class="avatar avatar--rail" data-action="account" type="button" title="马良 · 个人账户">马</button>
+      </div>
+    </aside>
+
+    <!-- ============ 上下文面板 ============ -->
+    <aside class="panel" id="panel" aria-label="项目导航">
+
+      <!-- 写作台目录 -->
+      <div class="panel-view" data-panel="studio">
+        <div class="panel-project">
+          <div class="mini-cover cover--fog"><span>雾</span></div>
+          <div class="panel-project__info">
+            <strong id="panelProjectTitle">雾港来信</strong>
+            <span id="panelProjectMeta">悬疑 · 长篇小说</span>
+          </div>
+          <button class="icon-btn icon-btn--sm" data-action="projectMenu" type="button" aria-label="作品菜单">
+            <svg class="icon"><use href="#i-chevron-down"></use></svg>
+          </button>
+        </div>
+        <div class="panel-scroll">
+          <div class="panel-section-head">
+            <span>目录 <em id="chapterCount">18 / 24 章</em></span>
+            <div class="panel-section-tools">
+              <button class="icon-btn icon-btn--sm" data-action="searchChapter" type="button" aria-label="搜索章节">
+                <svg class="icon"><use href="#i-search"></use></svg>
+              </button>
+              <button class="icon-btn icon-btn--sm" data-action="newChapter" type="button" aria-label="新建章节">
+                <svg class="icon"><use href="#i-plus"></use></svg>
+              </button>
+            </div>
+          </div>
+          <div class="chapter-tree" id="chapterTree"></div>
+          <div class="panel-note">
+            <div class="panel-note__head">
+              <span><svg class="icon"><use href="#i-bookmark"></use></svg> 本章笔记</span>
+              <button class="icon-btn icon-btn--sm" type="button" data-action="chapterNote" aria-label="添加笔记">
+                <svg class="icon"><use href="#i-plus"></use></svg>
+              </button>
+            </div>
+            <p>访客的伞留在门外。让“没有撑伞”成为第 14 章识破身份的伏笔。</p>
+            <div class="panel-note__foot">
+              <span># 伏笔</span><span># 访客</span><em>17:12</em>
+            </div>
+          </div>
+        </div>
+        <div class="panel-foot">
+          <div class="goal-mini">
+            <span>今日写作</span>
+            <strong>1,820 <em>/ 2,000 字</em></strong>
+            <span class="goal-mini__pct">91%</span>
+          </div>
+          <div class="pbar pbar--accent"><i style="width:91%"></i></div>
+          <button class="btn btn--ghost btn--block" data-action="newChapter" type="button">
+            <svg class="icon"><use href="#i-plus"></use></svg> 新建章节
+          </button>
+        </div>
+      </div>
+
+      <!-- 大纲导航 -->
+      <div class="panel-view" data-panel="outline" hidden>
+        <div class="panel-project">
+          <div class="mini-cover cover--fog"><span>雾</span></div>
+          <div class="panel-project__info"><strong>雾港来信</strong><span>三幕式 · 24 章</span></div>
+          <button class="icon-btn icon-btn--sm" data-action="projectMenu" type="button" aria-label="作品菜单">
+            <svg class="icon"><use href="#i-chevron-down"></use></svg>
+          </button>
+        </div>
+        <div class="panel-scroll">
+          <div class="panel-section-head"><span>结构</span><span class="panel-hint">已完成 18</span></div>
+          <div class="structure-card">
+            <div class="structure-card__icon"><svg class="icon"><use href="#i-route"></use></svg></div>
+            <div><strong>三幕式</strong><span>24 章 · 目标 30 万字</span></div>
+            <svg class="icon structure-card__check"><use href="#i-check"></use></svg>
+          </div>
+          <div class="act-list">
+            <button class="act-item is-active" type="button" data-act-index="0">
+              <span class="act-item__no">I</span>
+              <span class="act-item__body"><strong>潮声</strong><em>第 1–6 章</em></span>
+              <span class="act-item__status is-done">6/6</span>
+            </button>
+            <button class="act-item" type="button" data-act-index="1">
+              <span class="act-item__no">II</span>
+              <span class="act-item__body"><strong>暗流</strong><em>第 7–18 章</em></span>
+              <span class="act-item__status">10/12</span>
+            </button>
+            <button class="act-item" type="button" data-act-index="2">
+              <span class="act-item__no">III</span>
+              <span class="act-item__body"><strong>退潮</strong><em>第 19–24 章</em></span>
+              <span class="act-item__status is-todo">2/6</span>
+            </button>
+          </div>
+          <div class="panel-section-head panel-section-head--spaced"><span>人物弧光</span><span class="panel-hint">信念变化</span></div>
+          <div class="arc-list">
+            <div class="arc-row">
+              <div class="arc-row__top"><span>沈砚</span><em>执念 → 和解</em></div>
+              <div class="arc-track"><i style="width:64%"></i><b style="left:38%"></b></div>
+            </div>
+            <div class="arc-row">
+              <div class="arc-row__top"><span>林雾</span><em>隐瞒 → 坦白</em></div>
+              <div class="arc-track arc-track--jade"><i style="width:47%"></i><b style="left:24%"></b></div>
+            </div>
+            <div class="arc-row">
+              <div class="arc-row__top"><span>周隐</span><em>体面 → 崩塌</em></div>
+              <div class="arc-track arc-track--gold"><i style="width:78%"></i><b style="left:55%"></b></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel-foot panel-foot--note">
+          <svg class="icon"><use href="#i-spark"></use></svg>
+          <p>AI 检测到第二幕中段节奏偏慢，建议合并第 13、14 章。</p>
+        </div>
+      </div>
+
+      <!-- 设定库分类 -->
+      <div class="panel-view" data-panel="codex" hidden>
+        <div class="panel-project">
+          <div class="mini-cover cover--fog"><span>雾</span></div>
+          <div class="panel-project__info"><strong>雾港来信</strong><span>设定库 · 8 人物</span></div>
+          <button class="icon-btn icon-btn--sm" data-action="projectMenu" type="button" aria-label="作品菜单">
+            <svg class="icon"><use href="#i-chevron-down"></use></svg>
+          </button>
+        </div>
+        <div class="panel-scroll">
+          <label class="panel-search">
+            <svg class="icon"><use href="#i-search"></use></svg>
+            <input type="search" id="codexSearch" placeholder="搜索人物、地点、伏笔…">
+          </label>
+          <div class="codex-nav" id="codexNav">
+            <button class="codex-nav__item is-active" data-codex-cat="characters" type="button">
+              <svg class="icon"><use href="#i-users"></use></svg><span>人物</span><em>8</em>
+            </button>
+            <button class="codex-nav__item" data-codex-cat="locations" type="button">
+              <svg class="icon"><use href="#i-pin"></use></svg><span>地点</span><em>6</em>
+            </button>
+            <button class="codex-nav__item" data-codex-cat="organizations" type="button">
+              <svg class="icon"><use href="#i-shield"></use></svg><span>组织</span><em>4</em>
+            </button>
+            <button class="codex-nav__item" data-codex-cat="props" type="button">
+              <svg class="icon"><use href="#i-box"></use></svg><span>道具</span><em>6</em>
+            </button>
+            <button class="codex-nav__item" data-codex-cat="timeline" type="button">
+              <svg class="icon"><use href="#i-clock"></use></svg><span>时间线</span><em>10</em>
+            </button>
+            <button class="codex-nav__item" data-codex-cat="foreshadow" type="button">
+              <svg class="icon"><use href="#i-flag"></use></svg><span>伏笔</span><em>5</em>
+            </button>
+          </div>
+          <div class="memory-index">
+            <div class="memory-index__head">
+              <span><svg class="icon"><use href="#i-spark"></use></svg> 长期记忆</span>
+              <span class="sync-dot">已同步</span>
+            </div>
+            <p>AI 已索引 8 位人物、6 个地点与 5 条伏笔，写作时会自动引用。</p>
+            <div class="pbar"><i style="width:72%"></i></div>
+            <span class="memory-index__meta">32.6k / 64k tokens</span>
+          </div>
+        </div>
+        <div class="panel-foot panel-foot--note">
+          <svg class="icon"><use href="#i-clock"></use></svg>
+          <p>最近更新：林雾的人物秘密 · 10 分钟前</p>
+        </div>
+      </div>
+
+      <!-- 剧本场次 -->
+      <div class="panel-view" data-panel="screenplay" hidden>
+        <div class="panel-project">
+          <div class="mini-cover cover--echo"><span>回</span></div>
+          <div class="panel-project__info"><strong>回声</strong><span>电影剧本 · 第二稿</span></div>
+          <button class="icon-btn icon-btn--sm" data-action="projectMenu" type="button" aria-label="作品菜单">
+            <svg class="icon"><use href="#i-chevron-down"></use></svg>
+          </button>
+        </div>
+        <div class="panel-scroll">
+          <div class="panel-section-head">
+            <span>场次 <em>54 场</em></span>
+            <button class="icon-btn icon-btn--sm" type="button" data-action="newScene" aria-label="新建场次">
+              <svg class="icon"><use href="#i-plus"></use></svg>
+            </button>
+          </div>
+          <div class="scene-tree" id="sceneTree"></div>
+        </div>
+        <div class="panel-foot">
+          <div class="goal-mini">
+            <span>剧本进度</span>
+            <strong>102 <em>/ 150 页</em></strong>
+            <span class="goal-mini__pct">68%</span>
+          </div>
+          <div class="pbar pbar--jade"><i style="width:68%"></i></div>
+          <div class="screenplay-hint"><svg class="icon"><use href="#i-film"></use></svg> 已生成 38 个分镜</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ 主区域 ============ -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left" id="topbarLeft"></div>
+        <nav class="topbar-tabs" id="topbarTabs" aria-label="视图切换"></nav>
+        <div class="topbar-actions" id="topbarActions"></div>
+      </header>
+
+      <div class="viewport" id="viewport">
+
+        <!-- ================= 作品库 ================= -->
+        <section class="view view--library is-active" data-view="library" aria-label="作品库">
+          <div class="library">
+            <header class="lib-head">
+              <div class="lib-head__copy">
+                <p class="eyebrow"><span class="eyebrow__dot"></span>2026 年 10 月 20 日 · 周二</p>
+                <h1>下午好，马良<span>。</span></h1>
+                <p class="lib-sub">故事还在雾里，但你已经知道它在哪。</p>
+              </div>
+              <div class="lib-head__actions">
+                <label class="search-field">
+                  <svg class="icon"><use href="#i-search"></use></svg>
+                  <input type="search" id="libSearch" placeholder="搜索作品、章节、人物">
+                  <kbd>⌘ K</kbd>
+                </label>
+                <button class="btn btn--primary" data-open="newProject" type="button">
+                  <svg class="icon"><use href="#i-plus"></use></svg> 新建作品
+                </button>
+              </div>
+            </header>
+
+            <div class="stat-row">
+              <article class="stat-card">
+                <div class="stat-card__top">
+                  <span class="stat-card__label"><svg class="icon"><use href="#i-pen"></use></svg> 今日写作</span>
+                  <span class="delta delta--up">+12.4%</span>
+                </div>
+                <div class="stat-card__value">1,820<span>字</span></div>
+                <div class="stat-card__foot">
+                  <span>比昨天多写 201 字</span>
+                  <svg class="sparkline" viewBox="0 0 88 24" aria-hidden="true">
+                    <path d="M1 20 C8 19 11 12 18 14 S30 20 38 12 S52 5 59 10 S70 16 76 7 S84 8 87 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  </svg>
+                </div>
+              </article>
+              <article class="stat-card">
+                <div class="stat-card__top">
+                  <span class="stat-card__label"><svg class="icon"><use href="#i-flame"></use></svg> 连续创作</span>
+                  <span class="stat-card__badge">个人纪录 21 天</span>
+                </div>
+                <div class="stat-card__value">12<span>天</span></div>
+                <div class="stat-card__foot stat-card__foot--bars">
+                  <div class="week-bars" aria-hidden="true">
+                    <i style="--h:38%"></i><i style="--h:62%"></i><i style="--h:48%"></i><i style="--h:80%"></i><i style="--h:55%"></i><i style="--h:92%" class="is-today"></i><i style="--h:30%"></i>
+                  </div>
+                  <span>本周 6 / 7 天</span>
+                </div>
+              </article>
+              <article class="stat-card">
+                <div class="stat-card__top">
+                  <span class="stat-card__label"><svg class="icon"><use href="#i-target"></use></svg> 本周目标</span>
+                  <span class="delta">56%</span>
+                </div>
+                <div class="stat-card__value">8,400<span>/ 15,000 字</span></div>
+                <div class="stat-card__foot">
+                  <div class="pbar pbar--wide"><i style="width:56%"></i></div>
+                </div>
+              </article>
+              <article class="stat-card">
+                <div class="stat-card__top">
+                  <span class="stat-card__label"><svg class="icon"><use href="#i-spark"></use></svg> AI 共笔</span>
+                  <span class="delta delta--up">采纳率 78%</span>
+                </div>
+                <div class="stat-card__value">23<span>次</span></div>
+                <div class="stat-card__foot">
+                  <span>最常用：续写 · 氛围描写</span>
+                  <div class="ai-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+                </div>
+              </article>
+            </div>
+
+            <section class="continue-card">
+              <div class="cover cover--fog cover--hero">
+                <span class="cover__title">雾港<br>来信</span>
+                <span class="cover__author">马良</span>
+                <span class="cover__lighthouse" aria-hidden="true"></span>
+                <span class="cover__beam" aria-hidden="true"></span>
+                <span class="cover__fogline" aria-hidden="true"></span>
+              </div>
+              <div class="continue-card__body">
+                <span class="tag tag--live"><i></i>正在创作</span>
+                <h2>雾港来信</h2>
+                <p class="continue-card__desc">十年前沉没的渡轮，寄来一封写给活人的信。</p>
+                <div class="continue-card__chapter">
+                  <span>上次写到</span>
+                  <strong>第七章 · 雨夜的访客</strong>
+                  <span class="muted">2 小时前</span>
+                </div>
+                <blockquote>“门外的男人没有撑伞。雨水顺着他的帽檐往下滴，在门槛前积成一小片深色的海。”</blockquote>
+                <div class="continue-card__foot">
+                  <div class="progress-block">
+                    <div class="pbar pbar--wide"><i style="width:42%"></i></div>
+                    <span>12.6 / 30 万字</span>
+                  </div>
+                  <button class="btn btn--primary" data-open="studio" type="button">
+                    继续写作 <svg class="icon"><use href="#i-arrow-right"></use></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="continue-card__aside">
+                <div class="progress-ring" style="--progress:42">
+                  <div><strong>42<span>%</span></strong><em>全书进度</em></div>
+                </div>
+                <div class="continue-card__mini">
+                  <span><b>42</b> 章</span>
+                  <span><b>18</b> 已定稿</span>
+                </div>
+                <span class="continue-card__hint">今天再写 180 字，达成目标</span>
+              </div>
+            </section>
+
+            <div class="lib-cols">
+              <div class="lib-main">
+                <div class="section-head">
+                  <h2>我的作品 <span id="projectCountLabel">3</span></h2>
+                  <div class="filters" id="libFilters">
+                    <button class="is-active" data-filter="all" type="button">全部</button>
+                    <button data-filter="novel" type="button">长篇</button>
+                    <button data-filter="short" type="button">短篇</button>
+                    <button data-filter="script" type="button">剧本</button>
+                  </div>
+                </div>
+
+                <div class="project-grid" id="projectGrid">
+                  <article class="project-card" data-project="fog" data-filter="novel" tabindex="0" role="button" aria-label="打开雾港来信">
+                    <div class="cover cover--fog cover--card"><span class="cover__mark">雾</span></div>
+                    <div class="project-card__body">
+                      <div class="project-card__top">
+                        <h3>雾港来信</h3>
+                        <span class="tag tag--live">连载中</span>
+                      </div>
+                      <p class="project-card__desc">十年前沉没的渡轮，寄来一封写给活人的信。</p>
+                      <div class="project-card__meta"><span>长篇小说</span><i></i><span>12.6 万字</span><i></i><span>2 小时前</span></div>
+                      <div class="project-card__progress">
+                        <div class="pbar"><i style="width:42%"></i></div><span>42%</span>
+                      </div>
+                    </div>
+                    <button class="icon-btn icon-btn--sm project-card__more" type="button" data-action="projectMenu" aria-label="更多">
+                      <svg class="icon"><use href="#i-more"></use></svg>
+                    </button>
+                  </article>
+
+                  <article class="project-card" data-project="ferry" data-filter="short" tabindex="0" role="button" aria-label="打开最后一班渡轮">
+                    <div class="cover cover--ferry cover--card"><span class="cover__mark">渡</span></div>
+                    <div class="project-card__body">
+                      <div class="project-card__top">
+                        <h3>最后一班渡轮</h3>
+                        <span class="tag">修改中</span>
+                      </div>
+                      <p class="project-card__desc">末班船靠岸前，摆渡人发现乘客名单上多了一个人。</p>
+                      <div class="project-card__meta"><span>短篇小说</span><i></i><span>8,420 字</span><i></i><span>昨天</span></div>
+                      <div class="project-card__progress">
+                        <div class="pbar pbar--jade"><i style="width:70%"></i></div><span>70%</span>
+                      </div>
+                    </div>
+                    <button class="icon-btn icon-btn--sm project-card__more" type="button" data-action="projectMenu" aria-label="更多">
+                      <svg class="icon"><use href="#i-more"></use></svg>
+                    </button>
+                  </article>
+
+                  <article class="project-card" data-project="echo" data-filter="script" tabindex="0" role="button" aria-label="打开回声">
+                    <div class="cover cover--echo cover--card"><span class="cover__mark">回</span></div>
+                    <div class="project-card__body">
+                      <div class="project-card__top">
+                        <h3>回声</h3>
+                        <span class="tag">第二稿</span>
+                      </div>
+                      <p class="project-card__desc">声音修复师在旧磁带里，听见母亲从未说出口的告别。</p>
+                      <div class="project-card__meta"><span>电影剧本</span><i></i><span>102 页</span><i></i><span>3 天前</span></div>
+                      <div class="project-card__progress">
+                        <div class="pbar pbar--gold"><i style="width:68%"></i></div><span>68%</span>
+                      </div>
+                    </div>
+                    <button class="icon-btn icon-btn--sm project-card__more" type="button" data-action="projectMenu" aria-label="更多">
+                      <svg class="icon"><use href="#i-more"></use></svg>
+                    </button>
+                  </article>
+
+                  <button class="project-card project-card--new" data-open="newProject" type="button">
+                    <span class="new-project-icon"><svg class="icon"><use href="#i-plus"></use></svg></span>
+                    <strong>开始新的故事</strong>
+                    <span>从一句话灵感，到完整大纲</span>
+                  </button>
+                </div>
+
+                <div class="empty-state" id="libraryEmpty" hidden>
+                  <span class="empty-state__icon"><svg class="icon"><use href="#i-search"></use></svg></span>
+                  <strong id="emptyQuery">没有匹配的作品</strong>
+                  <p>换个关键词，或清除筛选后再看看。</p>
+                  <button class="btn btn--tiny btn--ghost" type="button" data-action="clearLibrarySearch">清除搜索</button>
+                </div>
+
+                <div class="section-head section-head--mt">
+                  <h2>让 AI 帮你开个头</h2>
+                  <span class="section-head__hint">选择体裁，生成故事方案</span>
+                </div>
+                <div class="template-row">
+                  <button class="template-card" data-template="novel" data-open="newProject" type="button">
+                    <span class="template-card__icon template-card__icon--blue"><svg class="icon"><use href="#i-book"></use></svg></span>
+                    <span class="template-card__body"><strong>长篇小说</strong><em>世界观 · 人物弧光 · 分卷大纲</em></span>
+                    <svg class="icon template-card__arrow"><use href="#i-arrow-right"></use></svg>
+                  </button>
+                  <button class="template-card" data-template="short" data-open="newProject" type="button">
+                    <span class="template-card__icon template-card__icon--jade"><svg class="icon"><use href="#i-feather"></use></svg></span>
+                    <span class="template-card__body"><strong>短篇小说</strong><em>单一冲突 · 结尾反转 · 精炼语言</em></span>
+                    <svg class="icon template-card__arrow"><use href="#i-arrow-right"></use></svg>
+                  </button>
+                  <button class="template-card" data-template="script" data-open="newProject" type="button">
+                    <span class="template-card__icon template-card__icon--gold"><svg class="icon"><use href="#i-clapper"></use></svg></span>
+                    <span class="template-card__body"><strong>电影剧本</strong><em>场次表 · 对白 · 分镜建议</em></span>
+                    <svg class="icon template-card__arrow"><use href="#i-arrow-right"></use></svg>
+                  </button>
+                  <button class="template-card" data-template="series" data-open="newProject" type="button">
+                    <span class="template-card__icon template-card__icon--rose"><svg class="icon"><use href="#i-film"></use></svg></span>
+                    <span class="template-card__body"><strong>剧集大纲</strong><em>多线叙事 · 分集钩子 · 人物关系</em></span>
+                    <svg class="icon template-card__arrow"><use href="#i-arrow-right"></use></svg>
+                  </button>
+                </div>
+              </div>
+
+              <aside class="lib-side">
+                <section class="side-card goal-card">
+                  <div class="side-card__head"><h3>今日目标</h3><button class="icon-btn icon-btn--sm" type="button" data-action="editGoal" aria-label="编辑目标"><svg class="icon"><use href="#i-more"></use></svg></button></div>
+                  <div class="goal-card__body">
+                    <div class="progress-ring progress-ring--lg" style="--progress:91">
+                      <div><strong>1,820</strong><em>/ 2,000 字</em></div>
+                    </div>
+                    <div class="goal-card__note">
+                      <span class="tag tag--accent">还差 180 字</span>
+                      <p>再写一小段，就能守住连续 12 天的火苗。</p>
+                    </div>
+                  </div>
+                  <div class="goal-card__week">
+                    <div class="week-bars week-bars--lg" aria-hidden="true">
+                      <i style="--h:38%"><span>一</span></i><i style="--h:62%"><span>二</span></i><i style="--h:48%"><span>三</span></i><i style="--h:80%"><span>四</span></i><i style="--h:55%"><span>五</span></i><i style="--h:92%" class="is-today"><span>六</span></i><i style="--h:22%"><span>日</span></i>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="side-card">
+                  <div class="side-card__head"><h3>最近动态</h3><button class="text-btn" type="button" data-action="allActivity">全部</button></div>
+                  <ul class="activity-list">
+                    <li>
+                      <span class="activity-icon activity-icon--ai"><svg class="icon"><use href="#i-spark"></use></svg></span>
+                      <div><p>AI 为第七章生成了 <b>3</b> 段续写</p><span>12 分钟前 · 采纳 2 段</span></div>
+                    </li>
+                    <li>
+                      <span class="activity-icon activity-icon--pen"><svg class="icon"><use href="#i-pen"></use></svg></span>
+                      <div><p>完成《雾港来信》第七章初稿</p><span>2 小时前 · 1,180 字</span></div>
+                    </li>
+                    <li>
+                      <span class="activity-icon activity-icon--user"><svg class="icon"><use href="#i-users"></use></svg></span>
+                      <div><p>更新了 <b>林雾</b> 的人物秘密</p><span>昨天 21:40</span></div>
+                    </li>
+                    <li>
+                      <span class="activity-icon activity-icon--flag"><svg class="icon"><use href="#i-flag"></use></svg></span>
+                      <div><p>埋下伏笔「缺页的潮汐表」</p><span>昨天 20:18 · 第 3 章</span></div>
+                    </li>
+                  </ul>
+                </section>
+
+                <section class="side-card inspiration-card">
+                  <div class="inspiration-card__head">
+                    <span><svg class="icon"><use href="#i-spark"></use></svg> 灵感胶囊</span>
+                    <span class="inspiration-card__badge">AI</span>
+                  </div>
+                  <p class="inspiration-card__quote">如果访客带来的皮箱里，装的不是钱，而是一整箱从未寄出的信——故事会往哪里走？</p>
+                  <div class="inspiration-card__foot">
+                    <button class="chip" type="button" data-action="refreshInspiration"><svg class="icon"><use href="#i-refresh"></use></svg> 换一个</button>
+                    <button class="text-btn" type="button" data-action="expandInspiration">展开推演 <svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+                  </div>
+                </section>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= 写作台 ================= -->
+        <section class="view view--studio" data-view="studio" aria-label="写作台">
+          <div class="studio">
+            <div class="doc-pane">
+              <div class="doc-toolbar">
+                <div class="doc-toolbar__group">
+                  <button class="tool-btn" data-cmd="bold" type="button" title="加粗 ⌘B"><svg class="icon"><use href="#i-bold"></use></svg></button>
+                  <button class="tool-btn" data-cmd="italic" type="button" title="斜体 ⌘I"><svg class="icon"><use href="#i-italic"></use></svg></button>
+                  <button class="tool-btn" data-cmd="formatBlock" data-value="blockquote" type="button" title="引用"><svg class="icon"><use href="#i-blockquote"></use></svg></button>
+                  <span class="tool-sep"></span>
+                  <button class="tool-btn" data-cmd="insertUnorderedList" type="button" title="列表"><svg class="icon"><use href="#i-list"></use></svg></button>
+                  <button class="tool-btn" data-action="insertDivider" type="button" title="插入分隔线"><svg class="icon"><use href="#i-columns"></use></svg></button>
+                  <button class="tool-btn" data-action="annotate" type="button" title="添加批注"><svg class="icon"><use href="#i-comment"></use></svg></button>
+                  <span class="tool-sep"></span>
+                  <button class="tool-btn tool-btn--ai" data-action="aiInline" type="button" title="AI 润色选中内容"><svg class="icon"><use href="#i-spark"></use></svg><span>AI</span></button>
+                </div>
+                <div class="doc-toolbar__group doc-toolbar__group--right">
+                  <span class="tool-meta" id="readingTime">约 5 分钟阅读</span>
+                  <button class="tool-btn" data-action="toggleFocus" type="button" title="专注模式 ⌘."><svg class="icon"><use href="#i-focus"></use></svg></button>
+                  <button class="tool-btn" data-action="toggleAI" type="button" title="收起 AI 面板"><svg class="icon"><use href="#i-columns"></use></svg></button>
+                </div>
+              </div>
+              <div class="doc-scroll" id="docScroll">
+                <article class="doc">
+                  <div class="doc-kicker"><span id="chapterVol">第一卷 · 潮声</span><i></i><span id="chapterNo">第七章</span></div>
+                  <h1 class="doc-title" id="chapterTitle" contenteditable="true" spellcheck="false">雨夜的访客</h1>
+                  <div class="doc-meta">
+                    <span class="save-state"><i id="saveDot"></i><span id="saveText">已保存</span></span>
+                    <span>·</span>
+                    <span id="chapterWords">1,180 字</span>
+                    <span>·</span>
+                    <span id="chapterStatus">初稿</span>
+                    <span>·</span>
+                    <span>最后编辑 17:31</span>
+                  </div>
+                  <div class="editor" id="editor" contenteditable="true" spellcheck="false"></div>
+
+                  <div class="ghost-block" id="ghostBlock">
+                    <div class="ghost-block__head">
+                      <span><svg class="icon"><use href="#i-spark"></use></svg> AI 建议续写</span>
+                      <span class="ghost-block__hint">按 Tab 接受</span>
+                    </div>
+                    <p>门外的男人没有再敲。他把伞收得很慢，伞骨刮过墙面，发出一种类似牙齿打颤的轻响。沈砚忽然想起，十年前那个雨夜，也有人这样站在门外。</p>
+                    <div class="ghost-block__actions">
+                      <button class="btn btn--tiny btn--primary" type="button" data-action="acceptGhost">接受</button>
+                      <button class="btn btn--tiny btn--ghost" type="button" data-action="rerollGhost">换一个</button>
+                      <button class="btn btn--tiny btn--ghost" type="button" data-action="dismissGhost">忽略</button>
+                    </div>
+                  </div>
+
+                  <div class="editor-end">
+                    <span></span><svg class="icon"><use href="#i-pen"></use></svg><span></span>
+                  </div>
+                </article>
+              </div>
+              <footer class="doc-statusbar">
+                <div class="doc-statusbar__left">
+                  <span class="status-dot"></span>
+                  <span>已自动保存</span>
+                  <i></i>
+                  <span>本章 <b id="statusWords">1,180</b> 字</span>
+                </div>
+                <div class="doc-statusbar__right">
+                  <span>今日 1,820 / 2,000 字</span>
+                  <i></i>
+                  <button class="text-btn" type="button" data-action="toggleFocus">专注模式</button>
+                </div>
+              </footer>
+            </div>
+
+            <aside class="ai-panel" id="aiPanel" aria-label="AI 共笔面板">
+              <header class="ai-head">
+                <div class="ai-head__title">
+                  <span class="ai-badge"><svg class="icon"><use href="#i-spark"></use></svg></span>
+                  <strong>AI 共笔</strong>
+                  <button class="model-pill" type="button" data-action="modelMenu">
+                    DeepSeek V3.2 <svg class="icon"><use href="#i-chevron-down"></use></svg>
+                  </button>
+                </div>
+                <div class="ai-head__actions">
+                  <button class="icon-btn icon-btn--sm" type="button" data-action="clearChat" aria-label="新对话">
+                    <svg class="icon"><use href="#i-refresh"></use></svg>
+                  </button>
+                  <button class="icon-btn icon-btn--sm" type="button" data-action="toggleAI" aria-label="收起面板">
+                    <svg class="icon"><use href="#i-chevron-right"></use></svg>
+                  </button>
+                </div>
+              </header>
+
+              <div class="ai-tabs" role="tablist">
+                <button class="ai-tab is-active" data-ai-tab="write" type="button" role="tab">共笔</button>
+                <button class="ai-tab" data-ai-tab="check" type="button" role="tab">连续性检查 <span class="ai-tab__badge">3</span></button>
+              </div>
+
+              <div class="ai-body" id="aiBody">
+                <div class="memory-card">
+                  <div class="memory-card__head">
+                    <span><svg class="icon"><use href="#i-layers"></use></svg> 已启用记忆</span>
+                    <span class="memory-card__tokens">38.2k / 128k</span>
+                  </div>
+                  <div class="memory-chips" id="memoryChips">
+                    <span class="memory-chip"><svg class="icon"><use href="#i-type"></use></svg> 本章正文</span>
+                    <span class="memory-chip"><svg class="icon"><use href="#i-users"></use></svg> 沈砚</span>
+                    <span class="memory-chip"><svg class="icon"><use href="#i-pin"></use></svg> 雾港</span>
+                    <span class="memory-chip"><svg class="icon"><use href="#i-flag"></use></svg> 缺页的潮汐表</span>
+                    <button class="memory-add" type="button" data-action="addMemory" aria-label="添加记忆">+</button>
+                  </div>
+                  <div class="memory-card__bar"><i style="width:30%"></i></div>
+                </div>
+
+                <div class="chat" id="chat">
+                  <div class="msg msg--ai">
+                    <div class="msg__avatar"><svg class="icon"><use href="#i-spark"></use></svg></div>
+                    <div class="msg__main">
+                      <div class="msg__name">共笔助手 <span>读完上下文后</span></div>
+                      <div class="msg__bubble" id="aiWelcome">我已读完《雾港来信》前六章、人物档案与 5 条伏笔。第七章要先把气氛压住，还是直接推进访客的身份？</div>
+                      <div class="msg__quick" id="aiQuick">
+                        <button type="button" data-prompt="先写气氛：雨夜、黑暗和门缝里的光，不要揭晓访客身份。">先写气氛</button>
+                        <button type="button" data-prompt="推进访客身份，但只给一个不可靠的线索。">推进身份</button>
+                        <button type="button" data-prompt="给沈砚加一个下意识的动作，暗示他认识这个人。">加一个暗示</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="msg msg--user">
+                    <div class="msg__main">
+                      <div class="msg__bubble">访客敲门后，先不要揭晓身份，把紧张感拉满。</div>
+                    </div>
+                  </div>
+
+                  <div class="msg msg--ai">
+                    <div class="msg__avatar"><svg class="icon"><use href="#i-spark"></use></svg></div>
+                    <div class="msg__main">
+                      <div class="msg__name">共笔助手 <span>12 秒前 · 4 项记忆</span></div>
+                      <div class="msg__bubble msg__bubble--prose">
+                        <p>门外的男人没有再敲。他把伞收得很慢，伞骨刮过墙面，发出一种类似牙齿打颤的轻响。</p>
+                        <p>沈砚没有动。他盯着门缝下那线昏黄的光，看见一双湿透的皮鞋缓慢地换了重心——门外的人也在等，等他先犯错。</p>
+                      </div>
+                      <div class="msg__actions">
+                        <button class="msg-action" type="button" data-insert-ai="1"><svg class="icon"><use href="#i-insert"></use></svg> 插入正文</button>
+                        <button class="msg-action" type="button" data-action="replaceAI">替换选中</button>
+                        <button class="msg-action" type="button" data-action="rewriteAI"><svg class="icon"><use href="#i-refresh"></use></svg> 更克制</button>
+                        <button class="icon-btn icon-btn--sm" type="button" data-action="copyAI" aria-label="复制"><svg class="icon"><use href="#i-copy"></use></svg></button>
+                      </div>
+                      <div class="msg__meta">生成于 12 秒前 · 使用 DeepSeek V3.2</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="quick-actions" id="quickActions">
+                  <button type="button" data-prompt="续写下一段，保持第一人称的压迫感。">续写下一段</button>
+                  <button type="button" data-prompt="加强这一段的雨夜氛围，多用听觉和触觉。">加强氛围</button>
+                  <button type="button" data-prompt="写一段沈砚与访客的对话，每句话都不超过十五个字。">补一段对白</button>
+                  <button type="button" data-prompt="在下一个场景里埋一条关于旧船票的伏笔。">埋一个伏笔</button>
+                </div>
+              </div>
+
+              <div class="ai-check" id="aiCheck" hidden>
+                <div class="check-summary">
+                  <div class="check-ring"><strong>3</strong><span>待处理</span></div>
+                  <div><strong>连续性检查</strong><p>基于全文 12.6 万字与设定库比对</p></div>
+                  <button class="btn btn--tiny btn--ghost" type="button" data-action="runCheck">重新检查</button>
+                </div>
+                <div class="check-list">
+                  <article class="check-item check-item--warn">
+                    <div class="check-item__head"><svg class="icon"><use href="#i-alert"></use></svg><span>时间线冲突</span><em>高</em></div>
+                    <p>林雾在第 4 章提到曾在南城读书，第 6 章却说“从没离开过雾港”。</p>
+                    <div class="check-item__foot"><span>涉及：第 4、6 章</span><button type="button" data-action="fixCheck">查看</button></div>
+                  </article>
+                  <article class="check-item">
+                    <div class="check-item__head"><svg class="icon"><use href="#i-users"></use></svg><span>人物语气</span><em>中</em></div>
+                    <p>周隐本场台词过于直接，与他“体面、回避冲突”的设定不符。</p>
+                    <div class="check-item__foot"><span>涉及：第 7 章</span><button type="button" data-action="fixCheck">润色</button></div>
+                  </article>
+                  <article class="check-item check-item--flag">
+                    <div class="check-item__head"><svg class="icon"><use href="#i-flag"></use></svg><span>伏笔待回收</span><em>低</em></div>
+                    <p>「伞骨划痕」已埋设 3 章，建议在第 14 章前安排一次呼应。</p>
+                    <div class="check-item__foot"><span>涉及：第 7 章</span><button type="button" data-action="fixCheck">规划</button></div>
+                  </article>
+                </div>
+                <button class="btn btn--ghost btn--block" type="button" data-action="checkAll">检查全书连续性</button>
+                <div class="check-foot">
+                  <span>上次检查 · 2 小时前</span>
+                  <span>范围：全书 12.6 万字</span>
+                </div>
+              </div>
+
+              <div class="ai-composer" id="aiComposer">
+                <div class="composer-box">
+                  <textarea id="aiInput" rows="2" placeholder="告诉 AI 你想怎么写…"></textarea>
+                  <div class="composer-tools">
+                    <div class="composer-tools__left">
+                      <button class="icon-btn icon-btn--sm" type="button" data-action="attach" aria-label="附加资料"><svg class="icon"><use href="#i-paperclip"></use></svg></button>
+                      <button class="icon-btn icon-btn--sm" type="button" data-action="addMemory" aria-label="引用设定"><svg class="icon"><use href="#i-layers"></use></svg></button>
+                      <button class="icon-btn icon-btn--sm" type="button" data-action="quoteSelection" aria-label="引用选中文本"><svg class="icon"><use href="#i-quote"></use></svg></button>
+                    </div>
+                    <button class="send-btn" id="aiSend" type="button" aria-label="发送">
+                      <svg class="icon"><use href="#i-arrow-up"></use></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="composer-hint"><span>⌘ ↵ 发送</span><span>AI 内容仅供参考，请自行判断</span></div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ================= 故事大纲 ================= -->
+        <section class="view view--outline" data-view="outline" aria-label="故事大纲">
+          <div class="outline-view">
+            <header class="view-head">
+              <div>
+                <p class="eyebrow"><span class="eyebrow__dot"></span>故事结构 · 三幕式</p>
+                <h1>三幕，二十四章</h1>
+                <p class="view-sub">一条失踪的妹妹，一艘沉没的船，和一封不该存在的信。</p>
+              </div>
+              <div class="view-actions">
+                <button class="btn btn--ghost" type="button" data-action="diagnose"><svg class="icon"><use href="#i-spark"></use></svg> 节奏诊断</button>
+                <button class="btn btn--primary" type="button" data-action="generateOutline"><svg class="icon"><use href="#i-wand"></use></svg> AI 推演第二幕</button>
+              </div>
+            </header>
+
+            <section class="tension-grid">
+              <div class="tension-card">
+                <div class="tension-card__head">
+                  <div><h2>情绪张力曲线</h2><p>按章节平均张力评分 · AI 估算</p></div>
+                  <div class="legend"><span><i></i>张力</span><span><i class="is-act"></i>幕间转折</span></div>
+                </div>
+                <div class="tension-chart">
+                  <div class="chart-y" aria-hidden="true"><span>9</span><span>7</span><span>5</span><span>3</span></div>
+                  <svg viewBox="0 0 820 220" preserveAspectRatio="none" aria-label="章节张力曲线">
+                    <defs>
+                      <linearGradient id="tensionFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#d4634c" stop-opacity=".28"/>
+                        <stop offset="100%" stop-color="#d4634c" stop-opacity="0"/>
+                      </linearGradient>
+                      <linearGradient id="tensionStroke" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stop-color="#c8a96b"/>
+                        <stop offset="55%" stop-color="#d4634c"/>
+                        <stop offset="100%" stop-color="#e0836b"/>
+                      </linearGradient>
+                    </defs>
+                    <g class="chart-grid">
+                      <line x1="0" y1="40" x2="820" y2="40"/><line x1="0" y1="90" x2="820" y2="90"/>
+                      <line x1="0" y1="140" x2="820" y2="140"/><line x1="0" y1="190" x2="820" y2="190"/>
+                    </g>
+                    <rect x="340" y="0" width="10" height="220" class="chart-act"/>
+                    <rect x="680" y="0" width="10" height="220" class="chart-act"/>
+                    <path class="chart-area" d="M0,168 C30,160 45,142 75,146 S120,118 150,126 S200,96 230,108 S280,74 310,90 S355,60 390,76 S440,52 475,68 S520,42 555,58 S600,32 635,48 S680,24 715,38 S760,20 790,30 L820,24 L820,220 L0,220 Z" fill="url(#tensionFill)"/>
+                    <path class="chart-line" d="M0,168 C30,160 45,142 75,146 S120,118 150,126 S200,96 230,108 S280,74 310,90 S355,60 390,76 S440,52 475,68 S520,42 555,58 S600,32 635,48 S680,24 715,38 S760,20 790,30 L820,24"/>
+                    <g class="chart-points">
+                      <circle cx="75" cy="146" r="3.5"/><circle cx="150" cy="126" r="3.5"/><circle cx="230" cy="108" r="3.5"/>
+                      <circle class="is-active" cx="310" cy="90" r="6"/><circle cx="390" cy="76" r="3.5"/><circle cx="475" cy="68" r="3.5"/>
+                      <circle cx="555" cy="58" r="3.5"/><circle cx="635" cy="48" r="3.5"/><circle cx="715" cy="38" r="3.5"/><circle cx="790" cy="30" r="3.5"/>
+                    </g>
+                    <g class="chart-labels">
+                      <text x="8" y="212">第 1 章</text>
+                      <text x="292" y="212">第 7 章</text>
+                      <text x="500" y="212">第 12 章</text>
+                      <text x="660" y="212">第 18 章</text>
+                      <text x="784" y="212">第 24 章</text>
+                    </g>
+                  </svg>
+                  <div class="chart-tooltip" id="chartTooltip">
+                    <span>第 7 章 · 雨夜的访客</span>
+                    <strong>张力 8.6</strong>
+                    <em>访客身份悬置，信息差最大</em>
+                  </div>
+                </div>
+              </div>
+
+              <aside class="insight-card" id="beatInsight">
+                <div class="insight-card__head">
+                  <span>章节诊断</span>
+                  <span class="tag tag--accent">AI</span>
+                </div>
+                <h3 id="insightTitle">第七章 · 雨夜的访客</h3>
+                <p class="insight-card__text" id="insightText">全书中段的关键钩子：用一个不肯报出名字的访客，把“白鸥号”重新拖回沈砚的生活。</p>
+                <dl class="insight-list">
+                  <div><dt>场景目标</dt><dd id="insightGoal">让沈砚无法继续回避十年前的事。</dd></div>
+                  <div><dt>核心冲突</dt><dd id="insightConflict">开门意味着承认自己一直在等；不开门，线索会再次消失。</dd></div>
+                  <div><dt>信息释放</dt><dd id="insightInfo">只给出一只刻着白鸥的旧皮箱，不给身份。</dd></div>
+                </dl>
+                <div class="insight-card__tip">
+                  <svg class="icon"><use href="#i-spark"></use></svg>
+                  <p id="insightTip">建议在本章结尾保留访客的伞，作为第 14 章识破身份的物证。</p>
+                </div>
+              </aside>
+            </section>
+
+            <div class="acts-head">
+              <h2>分幕大纲</h2>
+              <div class="acts-head__tools">
+                <button class="chip" type="button" data-action="addBeat"><svg class="icon"><use href="#i-plus"></use></svg> 添加场景</button>
+                <button class="chip" type="button" data-action="reorder"><svg class="icon"><use href="#i-grid"></use></svg> 卡片视图</button>
+              </div>
+            </div>
+
+            <div class="acts">
+              <article class="act">
+                <header class="act__head">
+                  <div class="act__no">I</div>
+                  <div class="act__title"><h3>潮声</h3><p>建立雾港、遗嘱与失踪的妹妹</p></div>
+                  <span class="act__count">6 / 6</span>
+                </header>
+                <div class="beats">
+                  <button class="beat is-done" type="button" data-beat="1">
+                    <span class="beat__no">01</span>
+                    <span class="beat__body"><strong>潮湿的遗嘱</strong><em>沈砚收到失踪妹妹的遗嘱</em></span>
+                    <span class="beat__tag">钩子</span>
+                  </button>
+                  <button class="beat is-done" type="button" data-beat="2">
+                    <span class="beat__no">02</span>
+                    <span class="beat__body"><strong>不该存在的信</strong><em>信纸上有白鸥号的邮戳</em></span>
+                    <span class="beat__tag">谜面</span>
+                  </button>
+                  <button class="beat is-done" type="button" data-beat="3">
+                    <span class="beat__no">03</span>
+                    <span class="beat__body"><strong>灯塔没有影子</strong><em>沈砚第一次见到林雾</em></span>
+                  </button>
+                  <button class="beat is-done" type="button" data-beat="4">
+                    <span class="beat__no">04</span>
+                    <span class="beat__body"><strong>旧照片上的第五个人</strong><em>合影里有人被剪掉了</em></span>
+                    <span class="beat__tag">线索</span>
+                  </button>
+                  <button class="beat is-done" type="button" data-beat="5">
+                    <span class="beat__no">05</span>
+                    <span class="beat__body"><strong>潮汐巷 14 号</strong><em>妹妹留下的空房间</em></span>
+                  </button>
+                  <button class="beat is-done" type="button" data-beat="6">
+                    <span class="beat__no">06</span>
+                    <span class="beat__body"><strong>第一封信</strong><em>信里写着明天的天气</em></span>
+                    <span class="beat__tag">转折</span>
+                  </button>
+                </div>
+              </article>
+
+              <article class="act act--current">
+                <header class="act__head">
+                  <div class="act__no">II</div>
+                  <div class="act__title"><h3>暗流</h3><p>追查沉船、谎言与妹妹的下落</p></div>
+                  <span class="act__count">10 / 12</span>
+                </header>
+                <div class="beats">
+                  <button class="beat is-current is-active" type="button" data-beat="7" data-insight='{"title":"第七章 · 雨夜的访客","text":"全书中段的关键钩子：用一个不肯报出名字的访客，把“白鸥号”重新拖回沈砚的生活。","goal":"让沈砚无法继续回避十年前的事。","conflict":"开门意味着承认自己一直在等；不开门，线索会再次消失。","info":"只给出一只刻着白鸥的旧皮箱，不给身份。","tip":"建议在本章结尾保留访客的伞，作为第 14 章识破身份的物证。"}'>
+                    <span class="beat__no">07</span>
+                    <span class="beat__body"><strong>雨夜的访客</strong><em>不明身份的皮箱</em></span>
+                    <span class="beat__tag beat__tag--live">写作中</span>
+                  </button>
+                  <button class="beat" type="button" data-beat="8" data-insight='{"title":"第八章 · 被撕掉的一页","text":"沈砚在档案馆发现 2006 年港务记录被精准裁走一页，切口整齐得像外科手术。","goal":"把私人失踪案升级为系统性的掩盖。","conflict":"管理员坚持记录完整，沈砚手里却握着缺页的复印件。","info":"沉船当晚的值班名单被人为改动。","tip":"让管理员说一句过于准确的日期，暗示他也记得那晚。"}'>
+                    <span class="beat__no">08</span>
+                    <span class="beat__body"><strong>被撕掉的一页</strong><em>档案馆里的第二个人</em></span>
+                    <span class="beat__tag">线索</span>
+                  </button>
+                  <button class="beat" type="button" data-beat="9" data-insight='{"title":"第九章 · 潮汐表","text":"林雾交给沈砚一张手抄潮汐表，背面是沈鹭的笔迹。","goal":"让林雾从“守口如瓶”转向“有限合作”。","conflict":"她只肯给出表，不肯解释来源。","info":"沈鹭在失踪前连续 11 天记录潮位。","tip":"让林雾在递表时下意识地擦掉指尖的墨水。"}'>
+                    <span class="beat__no">09</span>
+                    <span class="beat__body"><strong>潮汐表</strong><em>背面是妹妹的笔迹</em></span>
+                  </button>
+                  <button class="beat" type="button" data-beat="10" data-insight='{"title":"第十章 · 周隐的谎言","text":"港务局副局长周隐第一次正面登场，他记得沈砚，也记得沈鹭。","goal":"引入手握权力、体面而危险的反派。","conflict":"周隐用一份体面的工作邀约换取沈砚停止调查。","info":"他说白鸥号“没有幸存者”，却脱口说出沈鹭的名字。","tip":"把威胁藏在一次敬茶里，而不是台词里。"}'>
+                    <span class="beat__no">10</span>
+                    <span class="beat__body"><strong>周隐的谎言</strong><em>体面人的第一次失手</em></span>
+                    <span class="beat__tag">转折</span>
+                  </button>
+                  <button class="beat" type="button" data-beat="11">
+                    <span class="beat__no">11</span>
+                    <span class="beat__body"><strong>沉船名单</strong><em>二十三个名字，少了一个</em></span>
+                  </button>
+                  <button class="beat is-draft" type="button" data-beat="12">
+                    <span class="beat__no">12</span>
+                    <span class="beat__body"><strong>母亲的名字</strong><em>尚未展开</em></span>
+                    <span class="beat__tag beat__tag--todo">待写</span>
+                  </button>
+                  <button class="beat is-draft" type="button" data-beat="13">
+                    <span class="beat__no">13</span>
+                    <span class="beat__body"><strong>雾夜追踪</strong><em>尚未展开</em></span>
+                    <span class="beat__tag beat__tag--todo">待写</span>
+                  </button>
+                </div>
+                <button class="beat-add" type="button" data-action="addBeat"><svg class="icon"><use href="#i-plus"></use></svg> 添加场景</button>
+              </article>
+
+              <article class="act">
+                <header class="act__head">
+                  <div class="act__no">III</div>
+                  <div class="act__title"><h3>退潮</h3><p>真相浮出水面，所有人必须选择</p></div>
+                  <span class="act__count">2 / 6</span>
+                </header>
+                <div class="beats">
+                  <button class="beat" type="button" data-beat="19">
+                    <span class="beat__no">19</span>
+                    <span class="beat__body"><strong>回港</strong><em>沈砚带着证据回到雾港</em></span>
+                  </button>
+                  <button class="beat" type="button" data-beat="20">
+                    <span class="beat__no">20</span>
+                    <span class="beat__body"><strong>灯塔对决</strong><em>林雾与周隐的正面对峙</em></span>
+                    <span class="beat__tag">高潮</span>
+                  </button>
+                  <button class="beat is-draft" type="button" data-beat="21">
+                    <span class="beat__no">21</span>
+                    <span class="beat__body"><strong>最后一封信</strong><em>尚未展开</em></span>
+                    <span class="beat__tag beat__tag--todo">待写</span>
+                  </button>
+                  <button class="beat is-draft" type="button" data-beat="22">
+                    <span class="beat__no">22</span>
+                    <span class="beat__body"><strong>潮水退去</strong><em>尚未展开</em></span>
+                    <span class="beat__tag beat__tag--todo">待写</span>
+                  </button>
+                </div>
+                <button class="beat-add" type="button" data-action="addBeat"><svg class="icon"><use href="#i-plus"></use></svg> 添加场景</button>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= 人物设定 ================= -->
+        <section class="view view--codex" data-view="codex" aria-label="人物设定">
+          <div class="codex-view">
+            <header class="view-head">
+              <div>
+                <p class="eyebrow"><span class="eyebrow__dot"></span>故事设定库</p>
+                <h1>人物与雾港</h1>
+                <p class="view-sub">AI 已索引 8 位人物、6 个地点与 5 条伏笔，写作时会自动引用。</p>
+              </div>
+              <div class="view-actions">
+                <button class="btn btn--ghost" type="button" data-action="aiComplete"><svg class="icon"><use href="#i-spark"></use></svg> AI 补全设定</button>
+                <button class="btn btn--primary" type="button" data-action="newCharacter"><svg class="icon"><use href="#i-plus"></use></svg> 新增人物</button>
+              </div>
+            </header>
+
+            <div class="codex-tabs" role="tablist" id="codexTabs">
+              <button class="is-active" data-codex-tab="characters" type="button" role="tab">人物 <span>8</span></button>
+              <button data-codex-tab="locations" type="button" role="tab">地点 <span>6</span></button>
+              <button data-codex-tab="organizations" type="button" role="tab">组织 <span>4</span></button>
+              <button data-codex-tab="props" type="button" role="tab">道具 <span>6</span></button>
+              <button data-codex-tab="timeline" type="button" role="tab">时间线 <span>10</span></button>
+              <button data-codex-tab="foreshadow" type="button" role="tab">伏笔 <span>5</span></button>
+            </div>
+
+            <div class="codex-body" id="codexBody">
+              <div class="codex-content">
+                <div class="codex-pane is-active" data-codex-pane="characters">
+                  <div class="char-grid" id="charGrid">
+                    <button class="char-card is-active" data-char="shen" type="button">
+                      <div class="char-avatar char-avatar--shen">沈</div>
+                      <div class="char-card__info">
+                        <div class="char-card__name">沈砚 <span>主角</span></div>
+                        <p>前调查记者 · 34 岁</p>
+                        <div class="char-tags"><span>冷静</span><span>执拗</span></div>
+                      </div>
+                      <span class="char-card__rel">与林雾 <b>互相试探</b></span>
+                    </button>
+                    <button class="char-card" data-char="lin" type="button">
+                      <div class="char-avatar char-avatar--lin">林</div>
+                      <div class="char-card__info">
+                        <div class="char-card__name">林雾 <span>女主</span></div>
+                        <p>白塔灯塔看守人 · 28 岁</p>
+                        <div class="char-tags"><span>寡言</span><span>警觉</span></div>
+                      </div>
+                      <span class="char-card__rel">与沈砚 <b>共享秘密</b></span>
+                    </button>
+                    <button class="char-card" data-char="zhou" type="button">
+                      <div class="char-avatar char-avatar--zhou">周</div>
+                      <div class="char-card__info">
+                        <div class="char-card__name">周隐 <span>反派</span></div>
+                        <p>港务局副局长 · 52 岁</p>
+                        <div class="char-tags"><span>体面</span><span>圆滑</span></div>
+                      </div>
+                      <span class="char-card__rel">与沈砚 <b>暗中角力</b></span>
+                    </button>
+                    <button class="char-card" data-char="lu" type="button">
+                      <div class="char-avatar char-avatar--lu">鹭</div>
+                      <div class="char-card__info">
+                        <div class="char-card__name">沈鹭 <span>失踪</span></div>
+                        <p>沈砚的妹妹 · 失踪时 19 岁</p>
+                        <div class="char-tags"><span>明亮</span><span>叛逆</span></div>
+                      </div>
+                      <span class="char-card__rel">与林雾 <b>旧友</b></span>
+                    </button>
+                    <button class="char-card" data-char="tao" type="button">
+                      <div class="char-avatar char-avatar--tao">陶</div>
+                      <div class="char-card__info">
+                        <div class="char-card__name">老陶 <span>配角</span></div>
+                        <p>修船匠 · 63 岁</p>
+                        <div class="char-tags"><span>酗酒</span><span>义气</span></div>
+                      </div>
+                      <span class="char-card__rel">与周隐 <b>旧怨</b></span>
+                    </button>
+                    <button class="char-card" data-char="su" type="button">
+                      <div class="char-avatar char-avatar--su">苏</div>
+                      <div class="char-card__info">
+                        <div class="char-card__name">苏晚 <span>配角</span></div>
+                        <p>电台主播 · 31 岁</p>
+                        <div class="char-tags"><span>温柔</span><span>控制欲</span></div>
+                      </div>
+                      <span class="char-card__rel">与沈砚 <b>旧情</b></span>
+                    </button>
+                    <button class="char-card" data-char="chen" type="button">
+                      <div class="char-avatar char-avatar--chen">陈</div>
+                      <div class="char-card__info">
+                        <div class="char-card__name">陈默 <span>配角</span></div>
+                        <p>刑警 · 40 岁</p>
+                        <div class="char-tags"><span>疲惫</span><span>正直</span></div>
+                      </div>
+                      <span class="char-card__rel">与沈砚 <b>欠人情</b></span>
+                    </button>
+                    <button class="char-card" data-char="di" type="button">
+                      <div class="char-avatar char-avatar--di">荻</div>
+                      <div class="char-card__info">
+                        <div class="char-card__name">阿荻 <span>线索人物</span></div>
+                        <p>码头少年 · 17 岁</p>
+                        <div class="char-tags"><span>机灵</span><span>缺钱</span></div>
+                      </div>
+                      <span class="char-card__rel">与沈鹭 <b>目击者</b></span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="codex-pane" data-codex-pane="locations" hidden>
+                  <div class="entity-grid" id="locationGrid"></div>
+                </div>
+                <div class="codex-pane" data-codex-pane="organizations" hidden>
+                  <div class="entity-grid" id="orgGrid"></div>
+                </div>
+                <div class="codex-pane" data-codex-pane="props" hidden>
+                  <div class="entity-grid" id="propGrid"></div>
+                </div>
+                <div class="codex-pane" data-codex-pane="timeline" hidden>
+                  <div class="timeline-wrap">
+                    <div class="timeline-head"><span>故事时间线</span><em>按叙事顺序</em></div>
+                    <div class="timeline" id="timelineList"></div>
+                  </div>
+                </div>
+                <div class="codex-pane" data-codex-pane="foreshadow" hidden>
+                  <div class="foreshadow-wrap">
+                    <div class="foreshadow-head">
+                      <div><strong>伏笔台账</strong><p>AI 会追踪埋设与回收之间的距离，避免遗忘。</p></div>
+                      <span class="tag tag--accent">5 条进行中</span>
+                    </div>
+                    <div class="foreshadow-table" id="foreshadowTable"></div>
+                  </div>
+                </div>
+                <div class="empty-state" id="codexEmpty" hidden>
+                  <span class="empty-state__icon"><svg class="icon"><use href="#i-search"></use></svg></span>
+                  <strong>没有匹配的设定</strong>
+                  <p>换个关键词，或清除搜索后再试。</p>
+                  <button class="btn btn--tiny btn--ghost" type="button" data-action="clearCodexSearch">清除搜索</button>
+                </div>
+              </div>
+
+              <aside class="inspector" id="codexInspector">
+                <div class="inspector__head">
+                  <span>人物档案</span>
+                  <span class="sync-badge"><svg class="icon"><use href="#i-check"></use></svg> 已同步</span>
+                </div>
+                <div class="inspector__hero">
+                  <div class="char-avatar char-avatar--shen char-avatar--lg" id="insAvatar">沈</div>
+                  <div>
+                    <h2 id="insName">沈砚</h2>
+                    <p id="insRole">主角 · 前调查记者</p>
+                    <div class="char-tags" id="insTags"><span>冷静</span><span>执拗</span><span>失眠</span></div>
+                  </div>
+                </div>
+                <blockquote class="inspector__quote" id="insQuote">“雨声像有人在数钱。数到第三遍，门就开了。”</blockquote>
+                <dl class="inspector__fields">
+                  <div><dt>年龄</dt><dd id="insAge">34</dd></div>
+                  <div><dt>出场</dt><dd id="insAppear">18 章</dd></div>
+                  <div><dt>视角</dt><dd id="insPov">主视角</dd></div>
+                </dl>
+                <div class="inspector__section">
+                  <h4>动机与底色</h4>
+                  <p id="insDesc">十年前妹妹在雾港失踪，他辞去记者工作，回到这座潮湿的小城。表面在编地方志，实际一直在等一个答案。</p>
+                </div>
+                <div class="inspector__section">
+                  <h4>人物秘密 <svg class="icon"><use href="#i-lock"></use></svg></h4>
+                  <p class="inspector__secret" id="insSecret">他其实收到过妹妹的第二封信，但一直没敢拆。</p>
+                </div>
+                <div class="inspector__section">
+                  <h4>关系</h4>
+                  <div class="rel-list" id="insRelations">
+                    <div class="rel-row"><span class="char-avatar char-avatar--lin char-avatar--xs">林</span><div><strong>林雾</strong><em>互相试探</em></div><span class="rel-tension">张力 82</span></div>
+                    <div class="rel-row"><span class="char-avatar char-avatar--zhou char-avatar--xs">周</span><div><strong>周隐</strong><em>暗中角力</em></div><span class="rel-tension">张力 91</span></div>
+                    <div class="rel-row"><span class="char-avatar char-avatar--lu char-avatar--xs">鹭</span><div><strong>沈鹭</strong><em>未完成的告别</em></div><span class="rel-tension">执念</span></div>
+                  </div>
+                </div>
+                <div class="inspector__section">
+                  <h4>AI 写作提示</h4>
+                  <div class="ai-tip"><svg class="icon"><use href="#i-spark"></use></svg><p>沈砚不会主动提问。他的关心通常表现为记住别人说过的细节，然后在下一章用上。</p></div>
+                </div>
+                <button class="btn btn--ghost btn--block" type="button" data-action="deepenCharacter"><svg class="icon"><use href="#i-spark"></use></svg> 让 AI 深化这个人物</button>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= 剧本工坊 ================= -->
+        <section class="view view--screenplay" data-view="screenplay" aria-label="剧本工坊">
+          <div class="screenplay">
+            <div class="script-stage">
+              <div class="script-modebar">
+                <div class="segmented" id="scriptModes">
+                  <button class="is-active" data-script-mode="script" type="button"><svg class="icon"><use href="#i-type"></use></svg> 剧本正文</button>
+                  <button data-script-mode="boards" type="button"><svg class="icon"><use href="#i-grid"></use></svg> 分镜板</button>
+                </div>
+                <div class="script-modebar__meta">
+                  <span>第二稿 · 第 <b id="modePage">12</b> / 102 页</span>
+                  <button class="btn btn--tiny btn--ghost" type="button" data-action="scriptStats"><svg class="icon"><use href="#i-clock"></use></svg> 107 分钟</button>
+                </div>
+              </div>
+
+              <div class="script-pane is-active" data-script-pane="script">
+                <div class="script-paper">
+                  <div class="script-page-meta"><span>《回声》</span><span>第二稿 · 2026.10</span></div>
+                  <div class="script-page" id="scriptPage"></div>
+                  <div class="script-page-foot"><span>马良</span><span class="page-no" id="pageNo">12.</span></div>
+                </div>
+              </div>
+
+              <div class="script-pane" data-script-pane="boards" hidden>
+                <div class="board-head">
+                  <div><h2 id="boardTitle">场 12 · 渡轮底舱</h2><p id="boardSubtitle">6 个镜头 · 预计 24 秒 · AI 生成的分镜草案</p></div>
+                  <button class="btn btn--tiny btn--ghost" type="button" data-action="regenerateBoards"><svg class="icon"><use href="#i-refresh"></use></svg> 重新生成</button>
+                </div>
+                <div class="board-grid">
+                  <article class="shot-card">
+                    <div class="shot-frame shot-frame--1"><span class="shot-frame__no">01</span><span class="shot-frame__label">全景</span><i class="shot-figure"></i></div>
+                    <div class="shot-info"><strong>渡轮底舱</strong><p>缓慢推进 · 6s</p></div>
+                  </article>
+                  <article class="shot-card">
+                    <div class="shot-frame shot-frame--2"><span class="shot-frame__no">02</span><span class="shot-frame__label">中景</span><i class="shot-figure"></i></div>
+                    <div class="shot-info"><strong>手电扫过铁柜</strong><p>横移 · 4s</p></div>
+                  </article>
+                  <article class="shot-card">
+                    <div class="shot-frame shot-frame--3"><span class="shot-frame__no">03</span><span class="shot-frame__label">特写</span></div>
+                    <div class="shot-info"><strong>铁柜上的划痕</strong><p>定镜 · 2s</p></div>
+                  </article>
+                  <article class="shot-card">
+                    <div class="shot-frame shot-frame--4"><span class="shot-frame__no">04</span><span class="shot-frame__label">近景</span><i class="shot-figure"></i></div>
+                    <div class="shot-info"><strong>林雾的眼神</strong><p>手持 · 3s</p></div>
+                  </article>
+                  <article class="shot-card">
+                    <div class="shot-frame shot-frame--5"><span class="shot-frame__no">05</span><span class="shot-frame__label">过肩</span><i class="shot-figure shot-figure--two"></i></div>
+                    <div class="shot-info"><strong>两人对峙</strong><p>缓慢环绕 · 5s</p></div>
+                  </article>
+                  <article class="shot-card">
+                    <div class="shot-frame shot-frame--6"><span class="shot-frame__no">06</span><span class="shot-frame__label">特写</span></div>
+                    <div class="shot-info"><strong>录音机的红灯</strong><p>定镜 · 2s</p></div>
+                  </article>
+                </div>
+              </div>
+            </div>
+
+            <aside class="script-inspector">
+              <div class="script-inspector__head">
+                <span>本场分析</span>
+                <span class="tag tag--accent">AI</span>
+              </div>
+              <h3 id="sceneName">场 12 · 渡轮底舱</h3>
+              <div class="score-row">
+                <div class="score"><strong id="scoreTension">5.0</strong><span>张力</span></div>
+                <div class="score"><strong id="scorePace">4.0</strong><span>节奏</span></div>
+                <div class="score"><strong id="scoreInfo">3.5</strong><span>信息</span></div>
+              </div>
+              <div class="script-inspector__section">
+                <h4>本场功能</h4>
+                <p id="sceneFunction">把“船早已沉没”的事实变成一个视觉证据，让观众先于人物感到不安。</p>
+              </div>
+              <div class="script-inspector__section">
+                <h4>潜台词</h4>
+                <p id="sceneSubtext">林雾说“船号对得上”时，真正想说的是：我早就知道你会来。</p>
+              </div>
+              <div class="script-inspector__section">
+                <h4>人物在场</h4>
+                <div class="scene-cast" id="sceneCast">
+                  <span><i class="char-avatar char-avatar--lin char-avatar--xs">林</i>林雾</span>
+                  <span><i class="char-avatar char-avatar--shen char-avatar--xs">沈</i>沈砚</span>
+                </div>
+              </div>
+              <div class="ai-tip ai-tip--panel">
+                <svg class="icon"><use href="#i-spark"></use></svg>
+                <p id="sceneTip">建议删掉一句解释性对白，让手电的光在划痕上多停一秒。</p>
+              </div>
+              <button class="btn btn--ghost btn--block" type="button" data-action="generateBoards"><svg class="icon"><use href="#i-film"></use></svg> 生成这一场分镜</button>
+              <div class="script-inspector__foot">场景目标字数：2.5 页 · 当前 2.8 页</div>
+            </aside>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ============ 新建作品向导 ============ -->
+  <div class="overlay" id="overlay" hidden>
+    <div class="modal modal--wizard" id="newProjectModal" role="dialog" aria-modal="true" aria-labelledby="wizardTitle" hidden>
+      <header class="modal__head">
+        <div>
+          <p class="modal__eyebrow">新建作品</p>
+          <h2 id="wizardTitle">从一个念头开始</h2>
+        </div>
+        <button class="icon-btn" type="button" data-close="modal" aria-label="关闭"><svg class="icon"><use href="#i-x"></use></svg></button>
+      </header>
+      <div class="wizard-steps" id="wizardSteps">
+        <div class="wizard-step is-active"><span>01</span><div><strong>灵感与体裁</strong><em>告诉我们你想写什么</em></div></div>
+        <div class="wizard-step"><span>02</span><div><strong>AI 创作方案</strong><em>标题、人物与三幕结构</em></div></div>
+        <div class="wizard-step"><span>03</span><div><strong>开始写作</strong><em>进入你的新故事</em></div></div>
+      </div>
+
+      <div class="wizard-body" data-wizard-step="1">
+        <div class="form-block">
+          <label class="form-label">选择体裁</label>
+          <div class="type-options" id="typeOptions">
+            <button class="type-option is-active" data-type="novel" type="button">
+              <svg class="icon"><use href="#i-book"></use></svg>
+              <span><strong>长篇小说</strong><em>10 万字以上，多线叙事</em></span>
+              <svg class="icon type-option__check"><use href="#i-check"></use></svg>
+            </button>
+            <button class="type-option" data-type="short" type="button">
+              <svg class="icon"><use href="#i-feather"></use></svg>
+              <span><strong>短篇小说</strong><em>3,000–15,000 字，单一冲突</em></span>
+              <svg class="icon type-option__check"><use href="#i-check"></use></svg>
+            </button>
+            <button class="type-option" data-type="script" type="button">
+              <svg class="icon"><use href="#i-clapper"></use></svg>
+              <span><strong>电影剧本</strong><em>90–120 分钟，场次与对白</em></span>
+              <svg class="icon type-option__check"><use href="#i-check"></use></svg>
+            </button>
+            <button class="type-option" data-type="series" type="button">
+              <svg class="icon"><use href="#i-film"></use></svg>
+              <span><strong>剧集大纲</strong><em>多集叙事，每集一个钩子</em></span>
+              <svg class="icon type-option__check"><use href="#i-check"></use></svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-block">
+            <label class="form-label" for="newTitle">作品名 <span>可留空，让 AI 取名</span></label>
+            <input class="text-input" id="newTitle" type="text" placeholder="例如：潮汐表上没有的名字">
+          </div>
+          <div class="form-block">
+            <label class="form-label" for="newGenre">类型关键词</label>
+            <select class="text-input" id="newGenre">
+              <option>悬疑 · 文学</option>
+              <option>现实主义</option>
+              <option>科幻 · 近未来</option>
+              <option>古装 · 权谋</option>
+              <option>都市 · 情感</option>
+              <option>犯罪 · 黑色电影</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-block">
+          <label class="form-label" for="newPremise">一句话灵感 <span>越具体，AI 的方案越贴近你</span></label>
+          <textarea class="text-input text-input--area" id="newPremise" rows="3" placeholder="例如：一个替人写遗书的代笔人，收到了一封写给自己的遗书，落款日期是明天。">一个替人写遗书的代笔人，收到了一封写给自己的遗书，落款日期是明天。</textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-block">
+            <label class="form-label">希望读起来像</label>
+            <div class="chip-options" id="toneOptions">
+              <button class="chip is-active" type="button">潮湿阴郁</button>
+              <button class="chip" type="button">冷峻克制</button>
+              <button class="chip" type="button">温柔治愈</button>
+              <button class="chip" type="button">荒诞黑色</button>
+            </div>
+          </div>
+          <div class="form-block">
+            <label class="form-label">目标体量</label>
+            <div class="chip-options" id="lengthOptions">
+              <button class="chip" type="button">8 万字</button>
+              <button class="chip is-active" type="button">25 万字</button>
+              <button class="chip" type="button">40 万字</button>
+              <button class="chip" type="button">不限</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-body" data-wizard-step="2" hidden>
+        <div class="wizard-loading" id="wizardLoading">
+          <div class="loading-orbit"><span></span><svg class="icon"><use href="#i-spark"></use></svg></div>
+          <strong>AI 正在推演故事骨架</strong>
+          <p>分析题材惯例 · 设计人物动机 · 分配三幕节拍</p>
+          <div class="loading-bars"><i></i><i></i><i></i></div>
+        </div>
+        <div class="proposal" id="wizardProposal" hidden>
+          <div class="proposal__head">
+            <div class="cover cover--fog cover--proposal"><span class="cover__mark">潮</span></div>
+            <div>
+              <span class="tag tag--accent">AI 方案 · 候选 1/3</span>
+              <h3>潮汐表上没有的名字</h3>
+              <p>一个替人写遗书的代笔人，收到一封写给自己的遗书。落款是明天，而写信人，是三年前已经死去的母亲。</p>
+              <div class="proposal__meta"><span>悬疑 · 文学</span><i></i><span>预计 25 万字</span><i></i><span>三幕 · 24 章</span></div>
+            </div>
+            <button class="icon-btn" type="button" data-action="rerollProposal" aria-label="换一个方案"><svg class="icon"><use href="#i-refresh"></use></svg></button>
+          </div>
+          <div class="proposal__grid">
+            <section>
+              <h4><svg class="icon"><use href="#i-users"></use></svg> 主要人物</h4>
+              <ul class="proposal-list">
+                <li><b>江迟</b><span>代笔人 · 35 岁。靠替陌生人写告别为生，从不写自己的名字。</span></li>
+                <li><b>沈青</b><span>旧书店老板 · 母亲生前的好友。知道遗书为什么会在三年后出现。</span></li>
+                <li><b>周见</b><span>殡仪馆经理 · 体面的中间人。所有遗书都要经过他的手。</span></li>
+              </ul>
+            </section>
+            <section>
+              <h4><svg class="icon"><use href="#i-map"></use></svg> 三幕结构</h4>
+              <ol class="proposal-beats">
+                <li><b>第一幕 · 字迹</b><span>江迟收到写给自己的遗书，追查纸张与墨水的来源。</span></li>
+                <li><b>第二幕 · 代笔</b><span>他发现母亲生前替整座城的人写过遗书，而每一封都少了一个名字。</span></li>
+                <li><b>第三幕 · 落款</b><span>在明天的日期到来之前，他必须决定替谁写下最后一封信。</span></li>
+              </ol>
+            </section>
+          </div>
+          <div class="proposal__tip"><svg class="icon"><use href="#i-spark"></use></svg> AI 已同时准备好人物小传、第一章开场与伏笔台账。</div>
+        </div>
+      </div>
+
+      <div class="wizard-body" data-wizard-step="3" hidden>
+        <div class="created-state">
+          <div class="created-state__icon"><svg class="icon"><use href="#i-check"></use></svg></div>
+          <h3>故事已经准备好</h3>
+          <p>《潮汐表上没有的名字》已创建。你可以直接开写，也可以先调整大纲。</p>
+          <div class="created-state__cards">
+            <span><b>24</b> 章节大纲</span>
+            <span><b>3</b> 人物小传</span>
+            <span><b>5</b> 条初始伏笔</span>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal__foot">
+        <span class="modal__hint" id="wizardHint">AI 会根据你的灵感生成可编辑的方案，不会直接替你写完。</span>
+        <div class="modal__foot-actions">
+          <button class="btn btn--ghost" type="button" id="wizardBack" hidden>返回修改</button>
+          <button class="btn btn--primary" type="button" id="wizardNext">AI 生成创作方案 <svg class="icon"><use href="#i-spark"></use></svg></button>
+        </div>
+      </footer>
+    </div>
+
+    <!-- 导出弹窗 -->
+    <div class="modal modal--export" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportTitle" hidden>
+      <header class="modal__head">
+        <div><p class="modal__eyebrow">导出作品</p><h2 id="exportTitle">把故事带走</h2></div>
+        <button class="icon-btn" type="button" data-close="modal" aria-label="关闭"><svg class="icon"><use href="#i-x"></use></svg></button>
+      </header>
+      <div class="export-body">
+        <div class="form-block">
+          <label class="form-label">导出内容</label>
+          <div class="export-options">
+            <button class="export-option is-active" data-export="manuscript" type="button"><svg class="icon"><use href="#i-book"></use></svg><span><strong>正文稿件</strong><em>42 章 · 12.6 万字</em></span><svg class="icon"><use href="#i-check"></use></svg></button>
+            <button class="export-option" data-export="outline" type="button"><svg class="icon"><use href="#i-map"></use></svg><span><strong>大纲与设定</strong><em>三幕结构 · 人物档案 · 伏笔</em></span><svg class="icon"><use href="#i-check"></use></svg></button>
+          </div>
+        </div>
+        <div class="form-block">
+          <label class="form-label">格式</label>
+          <div class="chip-options" id="exportFormats">
+            <button class="chip is-active" type="button">Word</button>
+            <button class="chip" type="button">PDF</button>
+            <button class="chip" type="button">Markdown</button>
+            <button class="chip" type="button">TXT</button>
+          </div>
+        </div>
+        <label class="check-line"><input type="checkbox" checked> 包含批注与 AI 共笔记录</label>
+      </div>
+      <footer class="modal__foot">
+        <span class="modal__hint">原稿会保留在云端，随时可以继续修改。</span>
+        <div class="modal__foot-actions">
+          <button class="btn btn--ghost" type="button" data-close="modal">取消</button>
+          <button class="btn btn--primary" type="button" data-action="doExport"><svg class="icon"><use href="#i-download"></use></svg> 导出</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 批注浮层 -->
+  <div class="annotation-pop" id="annotationPop" hidden>
+    <div class="annotation-pop__head"><span>批注</span><button class="icon-btn icon-btn--sm" type="button" data-action="closeAnnotation" aria-label="关闭"><svg class="icon"><use href="#i-x"></use></svg></button></div>
+    <p>这句话是第七章的题眼。让“她”既指沈鹭，也指林雾——读者第一次读到时会以为是前者。</p>
+    <div class="annotation-pop__foot"><span>马良 · 2 小时前</span><button type="button" data-action="resolveAnnotation">标记已解决</button></div>
+  </div>
+
+  <!-- 通用下拉 -->
+  <div class="popover" id="modelPopover" hidden>
+    <div class="popover__head">选择模型</div>
+    <button class="popover__item is-active" type="button" data-model="DeepSeek V3.2"><span><strong>DeepSeek V3.2</strong><em>长篇模式 · 128k 上下文</em></span><svg class="icon"><use href="#i-check"></use></svg></button>
+    <button class="popover__item" type="button" data-model="Claude Sonnet 4.5"><span><strong>Claude Sonnet 4.5</strong><em>细腻文风 · 200k 上下文</em></span><svg class="icon"><use href="#i-check"></use></svg></button>
+    <button class="popover__item" type="button" data-model="GPT-5.2"><span><strong>GPT-5.2</strong><em>结构推演 · 128k 上下文</em></span><svg class="icon"><use href="#i-check"></use></svg></button>
+    <div class="popover__foot">切换后，当前对话会保留上下文</div>
+  </div>
+
+  <!-- ============ 设置中心 ============ -->
+  <div class="settings-overlay" id="settingsOverlay" hidden>
+    <div class="settings-shell" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <aside class="settings-nav">
+        <div class="settings-brand">
+          <span class="brand__seal">私</span>
+          <div><strong>设置</strong><span>私家写手 · 工作区</span></div>
+        </div>
+        <div class="settings-account">
+          <span class="avatar avatar--settings">马</span>
+          <div><strong>马良</strong><span>Pro · 本地工作区</span></div>
+          <span class="sync-badge"><svg class="icon"><use href="#i-check"></use></svg> 已同步</span>
+        </div>
+        <nav class="settings-menu" id="settingsMenu">
+          <button class="is-active" data-settings-tab="appearance" type="button">
+            <svg class="icon"><use href="#i-palette"></use></svg>
+            <span><strong>外观</strong><em>主题、色彩与阅读</em></span>
+          </button>
+          <button data-settings-tab="models" type="button">
+            <svg class="icon"><use href="#i-server"></use></svg>
+            <span><strong>模型与供应商</strong><em>API、模型与生成参数</em></span>
+            <i class="settings-menu__badge">8</i>
+          </button>
+          <button data-settings-tab="writing" type="button">
+            <svg class="icon"><use href="#i-pen"></use></svg>
+            <span><strong>写作偏好</strong><em>视角、文风与目标</em></span>
+          </button>
+          <button data-settings-tab="shortcuts" type="button">
+            <svg class="icon"><use href="#i-type"></use></svg>
+            <span><strong>快捷键</strong><em>键盘操作一览</em></span>
+          </button>
+          <button data-settings-tab="data" type="button">
+            <svg class="icon"><use href="#i-shield"></use></svg>
+            <span><strong>数据与隐私</strong><em>本地存储与导出</em></span>
+          </button>
+        </nav>
+        <div class="settings-navfoot">
+          <button class="text-btn" type="button" data-action="resetAppearance"><svg class="icon"><use href="#i-refresh"></use></svg> 恢复默认外观</button>
+          <span>v0.2 · 界面原型</span>
+        </div>
+      </aside>
+
+      <main class="settings-main">
+        <header class="settings-head">
+          <div>
+            <p class="eyebrow">应用设置</p>
+            <h2 id="settingsTitle">外观</h2>
+            <p id="settingsSubtitle">主题、强调色与正文阅读体验，修改会立即生效。</p>
+          </div>
+          <button class="icon-btn" type="button" data-action="closeSettings" aria-label="关闭设置">
+            <svg class="icon"><use href="#i-x"></use></svg>
+          </button>
+        </header>
+
+        <div class="settings-scroll" id="settingsScroll">
+          <!-- 外观 -->
+          <section class="settings-pane is-active" data-settings-pane="appearance">
+            <div class="settings-block">
+              <div class="settings-block__head">
+                <div><h3>主题风格</h3><p>为长时间写作选择一套不刺眼的环境。</p></div>
+                <span class="settings-count">4 套</span>
+              </div>
+              <div class="theme-grid" id="themeGrid">
+                <button class="theme-card is-active" data-theme-choice="ink" type="button">
+                  <span class="theme-shot theme-shot--ink">
+                    <i class="theme-shot__rail"></i><i class="theme-shot__side"></i>
+                    <span class="theme-shot__page"><b></b><em></em><em></em><em></em></span>
+                    <i class="theme-shot__accent"></i>
+                  </span>
+                  <span class="theme-card__meta"><span><strong>墨夜</strong><em>深夜书房</em></span><svg class="icon"><use href="#i-check"></use></svg></span>
+                </button>
+                <button class="theme-card" data-theme-choice="abyss" type="button">
+                  <span class="theme-shot theme-shot--abyss">
+                    <i class="theme-shot__rail"></i><i class="theme-shot__side"></i>
+                    <span class="theme-shot__page"><b></b><em></em><em></em><em></em></span>
+                    <i class="theme-shot__accent"></i>
+                  </span>
+                  <span class="theme-card__meta"><span><strong>雾蓝</strong><em>港口夜航</em></span><svg class="icon"><use href="#i-check"></use></svg></span>
+                </button>
+                <button class="theme-card" data-theme-choice="moss" type="button">
+                  <span class="theme-shot theme-shot--moss">
+                    <i class="theme-shot__rail"></i><i class="theme-shot__side"></i>
+                    <span class="theme-shot__page"><b></b><em></em><em></em><em></em></span>
+                    <i class="theme-shot__accent"></i>
+                  </span>
+                  <span class="theme-card__meta"><span><strong>苔青</strong><em>山中清晨</em></span><svg class="icon"><use href="#i-check"></use></svg></span>
+                </button>
+                <button class="theme-card" data-theme-choice="paper" type="button">
+                  <span class="theme-shot theme-shot--paper">
+                    <i class="theme-shot__rail"></i><i class="theme-shot__side"></i>
+                    <span class="theme-shot__page"><b></b><em></em><em></em><em></em></span>
+                    <i class="theme-shot__accent"></i>
+                  </span>
+                  <span class="theme-card__meta"><span><strong>宣纸</strong><em>白日书房</em></span><svg class="icon"><use href="#i-check"></use></svg></span>
+                </button>
+              </div>
+            </div>
+
+            <div class="settings-two-col">
+              <div class="settings-block">
+                <div class="settings-block__head"><div><h3>主题色</h3><p>按钮、当前章节与 AI 动作的强调色。</p></div></div>
+                <div class="accent-grid" id="accentGrid">
+                  <button class="accent-swatch is-active" data-accent-choice="cinnabar" style="--swatch:#d4634c" type="button"><i></i><span>朱砂</span><em>#D4634C</em></button>
+                  <button class="accent-swatch" data-accent-choice="jade" style="--swatch:#6fb3a4" type="button"><i></i><span>青玉</span><em>#6FB3A4</em></button>
+                  <button class="accent-swatch" data-accent-choice="amber" style="--swatch:#c8a96b" type="button"><i></i><span>琥珀</span><em>#C8A96B</em></button>
+                  <button class="accent-swatch" data-accent-choice="indigo" style="--swatch:#6f8fd0" type="button"><i></i><span>靛蓝</span><em>#6F8FD0</em></button>
+                  <button class="accent-swatch" data-accent-choice="violet" style="--swatch:#a88bc9" type="button"><i></i><span>紫藤</span><em>#A88BC9</em></button>
+                  <button class="accent-swatch" data-accent-choice="graphite" style="--swatch:#8b8f99" type="button"><i></i><span>墨灰</span><em>#8B8F99</em></button>
+                </div>
+                <label class="custom-color">
+                  <span><svg class="icon"><use href="#i-palette"></use></svg> 自定义颜色</span>
+                  <span class="custom-color__right">
+                    <input type="color" id="customAccent" value="#d4634c">
+                    <em id="customAccentHex">#D4634C</em>
+                  </span>
+                </label>
+              </div>
+
+              <div class="settings-block">
+                <div class="settings-block__head"><div><h3>正文阅读</h3><p>只影响写作台正文，不改变界面字号。</p></div></div>
+                <div class="setting-row setting-row--range">
+                  <div><strong>正文字号</strong><span>当前 <b id="editorSizeLabel">17.5 px</b></span></div>
+                  <div class="range-wrap">
+                    <input type="range" id="editorSizeRange" min="15" max="22" step="0.5" value="17.5">
+                    <span class="range-ticks"><i>小</i><i>标准</i><i>大</i></span>
+                  </div>
+                </div>
+                <div class="setting-row">
+                  <div><strong>减弱动态效果</strong><span>关闭流式光标与界面过渡</span></div>
+                  <button class="switch" id="reduceMotionSwitch" type="button" role="switch" aria-checked="false"><i></i></button>
+                </div>
+                <div class="setting-row">
+                  <div><strong>正文衬线字体</strong><span>宋体 / Songti SC</span></div>
+                  <span class="setting-value">跟随系统</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="appearance-preview" id="appearancePreview">
+              <div class="appearance-preview__head">
+                <span><svg class="icon"><use href="#i-eye"></use></svg> 实时预览</span>
+                <span><b id="previewThemeName">墨夜</b> · <b id="previewAccentName">朱砂</b></span>
+              </div>
+              <div class="preview-stage">
+                <div class="preview-page">
+                  <span class="preview-kicker">第二卷 · 暗流 / 第七章</span>
+                  <h3>雨夜的访客</h3>
+                  <p>雨是傍晚开始的。起初只是几粒，敲在玻璃上，像有人用指甲试探一扇不肯开的门。</p>
+                  <p>他听见楼下传来三声敲门。不轻不重，间隔得像经过丈量。<mark>“她还活着，只是不在你记得的地方。”</mark></p>
+                  <div class="preview-ai"><svg class="icon"><use href="#i-spark"></use></svg><span>AI 建议：让访客的伞留在门外，作为第 14 章的物证。</span></div>
+                </div>
+                <div class="preview-ai-panel">
+                  <div class="preview-ai-panel__head"><svg class="icon"><use href="#i-spark"></use></svg> AI 共笔</div>
+                  <div class="preview-bubble">先不要揭晓访客身份，把紧张感拉满。</div>
+                  <div class="preview-bubble preview-bubble--ai">门外的男人没有再敲。他把伞收得很慢。</div>
+                  <div class="preview-input">告诉 AI 你想怎么写…</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 模型与供应商 -->
+          <section class="settings-pane" data-settings-pane="models" hidden>
+            <div class="models-summary">
+              <div class="default-model-card">
+                <span class="default-model-card__label">默认模型</span>
+                <div class="default-model-card__value">
+                  <span class="provider-dot" id="defaultModelDot"></span>
+                  <strong id="defaultModelName">DeepSeek V3.2</strong>
+                  <em id="defaultModelVendor">DeepSeek</em>
+                </div>
+                <span class="default-model-card__hint">写作台与 AI 共笔默认使用</span>
+              </div>
+              <div class="models-summary__stats">
+                <div><strong id="providerConnectedCount">2</strong><span>已连接供应商</span></div>
+                <div><strong id="availableModelCount">4</strong><span>可用模型</span></div>
+                <div><strong id="providerConfiguredCount">2 / 8</strong><span>配置进度</span></div>
+              </div>
+            </div>
+
+            <div class="settings-block">
+              <div class="settings-block__head">
+                <div><h3>模型供应商</h3><p>同一个工作台里管理云端、本地和聚合接口。</p></div>
+                <div class="settings-block__actions">
+                  <button class="btn btn--ghost btn--sm" type="button" data-action="openProviderCatalog"><svg class="icon"><use href="#i-plus"></use></svg> 添加供应商</button>
+                </div>
+              </div>
+              <div class="provider-grid" id="providerGrid"></div>
+              <p class="settings-footnote"><svg class="icon"><use href="#i-lock"></use></svg> API Key 仅保存在本机浏览器。原型不会发起真实网络请求。</p>
+            </div>
+
+            <div class="settings-block">
+              <div class="settings-block__head"><div><h3>生成参数</h3><p>作用于写作台的默认生成行为。</p></div></div>
+              <div class="generation-grid">
+                <div class="setting-row setting-row--range">
+                  <div><strong>创造性</strong><span>越低越克制，越高越发散</span></div>
+                  <div class="range-wrap">
+                    <input type="range" id="temperatureRange" min="0" max="1.5" step="0.1" value="0.8">
+                    <b id="temperatureValue">0.8</b>
+                  </div>
+                </div>
+                <div class="setting-row">
+                  <div><strong>流式输出</strong><span>AI 边生成边显示</span></div>
+                  <button class="switch is-on" id="streamingSwitch" type="button" role="switch" aria-checked="true"><i></i></button>
+                </div>
+                <div class="setting-row">
+                  <div><strong>默认模型</strong><span>切换后写作台同步更新</span></div>
+                  <select class="text-input text-input--compact" id="defaultModelSelect"></select>
+                </div>
+                <div class="setting-row">
+                  <div><strong>备用模型</strong><span>主模型不可用时提示切换</span></div>
+                  <select class="text-input text-input--compact" id="fallbackModelSelect"></select>
+                </div>
+              </div>
+            </div>
+
+            <div class="provider-note">
+              <div class="provider-note__icon"><svg class="icon"><use href="#i-shield"></use></svg></div>
+              <div><strong>本地优先，密钥不离开浏览器</strong><p>参考 LobeHub 与 Cherry Studio 的供应商配置模式：启用开关 + API Key + Base URL + 检查连接 + 模型启用列表，配置自动保存；不同任务可以为不同作品指定默认模型。</p></div>
+            </div>
+          </section>
+
+          <!-- 写作偏好 -->
+          <section class="settings-pane" data-settings-pane="writing" hidden>
+            <div class="settings-block">
+              <div class="settings-block__head"><div><h3>默认写作习惯</h3><p>新建章节与 AI 共笔会参考这些偏好。</p></div></div>
+              <div class="generation-grid">
+                <div class="setting-row">
+                  <div><strong>默认视角</strong><span>新建项目时的叙事人称</span></div>
+                  <select class="text-input text-input--compact" id="prefPov">
+                    <option>第三人称限知</option><option>第一人称</option><option>全知视角</option><option>多视角</option>
+                  </select>
+                </div>
+                <div class="setting-row">
+                  <div><strong>默认体裁</strong><span>新建向导的预选类型</span></div>
+                  <select class="text-input text-input--compact" id="prefGenre">
+                    <option>悬疑 · 文学</option><option>现实主义</option><option>科幻 · 近未来</option><option>犯罪 · 黑色电影</option>
+                  </select>
+                </div>
+                <div class="setting-row">
+                  <div><strong>AI 续写长度</strong><span>单次续写的目标字数</span></div>
+                  <select class="text-input text-input--compact" id="prefAiLength">
+                    <option>短 · 约 300 字</option><option selected>中 · 约 500 字</option><option>长 · 约 800 字</option>
+                  </select>
+                </div>
+                <div class="setting-row">
+                  <div><strong>自动保存</strong><span>停止输入 800ms 后保存草稿</span></div>
+                  <button class="switch is-on" id="prefAutoSave" type="button" role="switch" aria-checked="true"><i></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="settings-block">
+              <div class="settings-block__head"><div><h3>AI 文风</h3><p>作为默认语气注入每一次共笔。</p></div></div>
+              <div class="style-picker" id="stylePicker">
+                <button class="is-active" type="button">克制留白</button>
+                <button type="button">潮湿阴郁</button>
+                <button type="button">细腻感官</button>
+                <button type="button">冷峻对白</button>
+                <button type="button">口语叙事</button>
+              </div>
+              <p class="settings-footnote">文风会与作品自己的「设定库 / 人物语气」叠加，优先级低于人物卡。</p>
+            </div>
+          </section>
+
+          <!-- 快捷键 -->
+          <section class="settings-pane" data-settings-pane="shortcuts" hidden>
+            <div class="settings-block">
+              <div class="settings-block__head"><div><h3>全局快捷键</h3><p>写作时尽量不离开键盘。</p></div></div>
+              <div class="shortcut-table">
+                <div class="shortcut-row"><span>打开作品库搜索</span><kbd>⌘ K</kbd></div>
+                <div class="shortcut-row"><span>发送 AI 指令</span><kbd>⌘ ↵</kbd></div>
+                <div class="shortcut-row"><span>保存当前章节</span><kbd>⌘ S</kbd></div>
+                <div class="shortcut-row"><span>进入 / 退出专注模式</span><kbd>⌘ .</kbd></div>
+                <div class="shortcut-row"><span>接受 AI 行内建议</span><kbd>Tab</kbd></div>
+                <div class="shortcut-row"><span>关闭浮层 / 退出专注</span><kbd>Esc</kbd></div>
+              </div>
+            </div>
+            <div class="settings-block">
+              <div class="settings-block__head"><div><h3>编辑器</h3><p>与正文操作相关。</p></div></div>
+              <div class="shortcut-table">
+                <div class="shortcut-row"><span>加粗</span><kbd>⌘ B</kbd></div>
+                <div class="shortcut-row"><span>斜体</span><kbd>⌘ I</kbd></div>
+                <div class="shortcut-row"><span>插入场景分隔</span><kbd>⌘ ⇧ D</kbd></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 数据与隐私 -->
+          <section class="settings-pane" data-settings-pane="data" hidden>
+            <div class="settings-block">
+              <div class="settings-block__head"><div><h3>本地数据</h3><p>原型阶段只保存在当前浏览器。</p></div></div>
+              <div class="storage-card">
+                <div class="storage-card__top"><span><svg class="icon"><use href="#i-server"></use></svg> 浏览器存储</span><strong id="storageUsage">42 KB</strong></div>
+                <div class="pbar pbar--accent"><i id="storageBar" style="width:18%"></i></div>
+                <div class="storage-card__legend"><span>外观偏好</span><span>供应商配置</span><span>项目草稿（演示）</span></div>
+              </div>
+              <div class="data-actions">
+                <button class="btn btn--ghost" type="button" data-action="exportSettings"><svg class="icon"><use href="#i-download"></use></svg> 导出设置</button>
+                <button class="btn btn--ghost" type="button" data-action="clearLocalData"><svg class="icon"><use href="#i-trash"></use></svg> 清除本地偏好</button>
+              </div>
+            </div>
+            <div class="settings-block">
+              <div class="settings-block__head"><div><h3>隐私说明</h3><p>这一版是界面原型。</p></div></div>
+              <ul class="privacy-list">
+                <li><svg class="icon"><use href="#i-check"></use></svg><div><strong>API Key 不上传</strong><span>当前配置仅写入 localStorage，用于演示交互。</span></div></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg><div><strong>AI 生成为模拟</strong><span>不会向任何厂商发送你的作品正文。</span></div></li>
+                <li><svg class="icon"><use href="#i-check"></use></svg><div><strong>作品数据仅存内存</strong><span>刷新后恢复演示内容；正式版会使用本地数据库与可选云同步。</span></div></li>
+              </ul>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 供应商配置 -->
+  <div class="provider-layer" id="providerLayer" hidden>
+    <div class="provider-dialog" role="dialog" aria-modal="true" aria-labelledby="providerName">
+      <header class="provider-dialog__head">
+        <span class="provider-logo provider-logo--lg" id="providerLogo">D</span>
+        <div class="provider-dialog__title">
+          <p class="eyebrow" id="providerKind">国内 · 云端 API</p>
+          <h3 id="providerName">DeepSeek</h3>
+          <span id="providerEndpointLabel">api.deepseek.com</span>
+        </div>
+        <span class="conn-badge" id="providerStatusBadge"><i></i>已连接</span>
+        <button class="icon-btn" type="button" data-action="closeProvider" aria-label="关闭"><svg class="icon"><use href="#i-x"></use></svg></button>
+      </header>
+      <div class="provider-dialog__body">
+        <div class="provider-switch-row">
+          <div><strong>在此工作台启用</strong><span>关闭后不会出现在模型列表中</span></div>
+          <button class="switch is-on" id="providerEnabledSwitch" type="button" role="switch" aria-checked="true"><i></i></button>
+        </div>
+        <div class="form-block">
+          <label class="form-label" for="providerKey">API Key <a class="form-link" href="#" data-action="noop">如何获取</a></label>
+          <div class="secret-input">
+            <svg class="icon"><use href="#i-key"></use></svg>
+            <input type="password" id="providerKey" placeholder="sk-••••••••••••••••">
+            <button class="icon-btn icon-btn--sm" type="button" data-action="toggleProviderKey" aria-label="显示或隐藏密钥"><svg class="icon"><use href="#i-eye"></use></svg></button>
+          </div>
+          <p class="field-hint">凭据只保存在当前浏览器；原型不会发起真实请求。</p>
+        </div>
+        <div class="form-block">
+          <label class="form-label" for="providerBase">Base URL <span>OpenAI 兼容接口地址</span></label>
+          <input class="text-input" type="text" id="providerBase" placeholder="https://api.example.com/v1">
+        </div>
+        <div class="connection-row">
+          <button class="btn btn--ghost" type="button" data-action="testProviderConnection"><svg class="icon"><use href="#i-plug"></use></svg> 检查连接</button>
+          <span class="connection-status" id="connectionStatus"><i></i>未测试</span>
+          <span class="connection-hint">约 1 秒返回</span>
+        </div>
+        <div class="provider-models-head">
+          <div><h4>可用模型</h4><p>勾选后可在写作台切换；星标设为默认模型。</p></div>
+          <button class="text-btn" type="button" data-action="fetchProviderModels"><svg class="icon"><use href="#i-refresh"></use></svg> 自动获取</button>
+        </div>
+        <div class="provider-model-list" id="providerModelList"></div>
+      </div>
+      <footer class="provider-dialog__foot">
+        <span class="modal__hint">配置会自动保存；按 Esc 关闭。</span>
+        <div class="modal__foot-actions">
+          <button class="btn btn--ghost" type="button" data-action="closeProvider">取消</button>
+          <button class="btn btn--primary" type="button" data-action="saveProvider"><svg class="icon"><use href="#i-check"></use></svg> 保存配置</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 供应商目录 -->
+  <div class="provider-layer" id="providerCatalogLayer" hidden>
+    <div class="catalog-dialog" role="dialog" aria-modal="true" aria-labelledby="catalogTitle">
+      <header class="provider-dialog__head">
+        <div class="provider-dialog__title">
+          <p class="eyebrow">模型供应商</p>
+          <h3 id="catalogTitle">添加供应商</h3>
+          <span>已预设常见云端与本地接口，也可以接入 OpenAI 兼容地址。</span>
+        </div>
+        <button class="icon-btn" type="button" data-action="closeProviderCatalog" aria-label="关闭"><svg class="icon"><use href="#i-x"></use></svg></button>
+      </header>
+      <div class="catalog-search">
+        <svg class="icon"><use href="#i-search"></use></svg>
+        <input type="search" id="providerCatalogSearch" placeholder="搜索 DeepSeek、OpenAI、Ollama…">
+      </div>
+      <div class="catalog-grid" id="providerCatalogGrid"></div>
+      <footer class="provider-dialog__foot">
+        <span class="modal__hint">选择后会加入供应商列表，并打开配置面板。</span>
+        <button class="btn btn--ghost" type="button" data-action="addCustomProvider"><svg class="icon"><use href="#i-plus"></use></svg> 自定义 OpenAI 兼容接口</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="toast-root" id="toastRoot" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

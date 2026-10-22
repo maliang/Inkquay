@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Inkquay · 私家写手</title>
+  <desc id="desc">朱砂印章填满画布，中央为「私」字的写作软件标志</desc>
+  <defs>
+    <linearGradient id="seal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e17b63"/>
+      <stop offset="0.48" stop-color="#ca5e49"/>
+      <stop offset="1" stop-color="#a84333"/>
+    </linearGradient>
+    <radialGradient id="light" cx="28%" cy="20%" r="72%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="url(#seal)"/>
+  <rect width="1024" height="1024" rx="220" fill="url(#light)"/>
+  <rect x="34" y="34" width="956" height="956" rx="190" fill="none" stroke="#f8e2d1" stroke-opacity=".55" stroke-width="5"/>
+  <rect x="58" y="58" width="908" height="908" rx="170" fill="none" stroke="#f8e2d1" stroke-opacity=".18" stroke-width="2"/>
+  <text x="512" y="680" text-anchor="middle" font-family="Songti SC, STSong, SimSun, serif" font-size="570" font-weight="600" fill="#fbeee0">私</text>
+  <path d="M354 800h316" stroke="#f8e2d1" stroke-opacity=".58" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="512" cy="838" r="6" fill="#f8e2d1" fill-opacity=".62"/>
+</svg>

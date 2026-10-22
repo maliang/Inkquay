@@ -1,0 +1,13 @@
+node_modules/
+software/node_modules/
+software/dist/
+software/data/
+.DS_Store
+*.log
+desktop/server.cjs
+desktop/release/
+desktop/build/icon.iconset/
+desktop/build/icon-svg.png
+desktop/build/window-smoke.png
+desktop/build/packaged-*.png
+desktop/build/packaged-smoke.png

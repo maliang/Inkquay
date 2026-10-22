@@ -1,0 +1,90 @@
+{
+  "results": [
+    {
+      "step": "persistence",
+      "name": "刷新后已保存内容仍然存在（自动保存应持久化）",
+      "status": "fail",
+      "detail": {
+        "savedState": {
+          "save": "已保存",
+          "topbarWords": "126,480 字",
+          "chapterWords": "456 字",
+          "today": "今日 1,820 / 2,000 字\n                  \n                  专注模式",
+          "note": "访客的伞留在门外。让“没有撑伞”成为第 14 章识破身份的伏笔。"
+        },
+        "afterReload": {
+          "hasText": false,
+          "chapterWords": "456 字"
+        }
+      }
+    },
+    {
+      "step": "panel-note",
+      "name": "「本章笔记」随章节/项目更新",
+      "status": "fail",
+      "detail": {
+        "ch7": "访客的伞留在门外。让“没有撑伞”成为第 14 章识破身份的伏笔。",
+        "ch8": "访客的伞留在门外。让“没有撑伞”成为第 14 章识破身份的伏笔。",
+        "ch9": "访客的伞留在门外。让“没有撑伞”成为第 14 章识破身份的伏笔。"
+      }
+    },
+    {
+      "step": "panel-note",
+      "name": "新建/切换章节后今日目标与进度保持静态（设计或状态）",
+      "status": "info",
+      "detail": {
+        "note": "访客的伞留在门外。让“没有撑伞”成为第 14 章识破身份的伏笔。",
+        "goal": "1,820 / 2,000 字"
+      }
+    },
+    {
+      "step": "ai-empty",
+      "name": "空输入点发送：不产生消息且有提示",
+      "status": "fail",
+      "detail": {
+        "msgBefore": 3,
+        "emptySend": {
+          "msgs": 3,
+          "streaming": false,
+          "toast": 0
+        }
+      }
+    },
+    {
+      "step": "ai-copy",
+      "name": "「复制」点击有 toast 反馈",
+      "status": "pass"
+    },
+    {
+      "step": "wizard-focus-trap",
+      "name": "向导弹窗应把 Tab 焦点限制在弹窗内",
+      "status": "fail",
+      "detail": {
+        "i": 0,
+        "info": {
+          "tag": "BUTTON",
+          "id": "",
+          "cls": "btn btn--primary",
+          "inModal": false
+        }
+      }
+    },
+    {
+      "step": "project-info",
+      "name": "脚本异常中止",
+      "status": "fail",
+      "detail": {
+        "step": "project-info",
+        "message": "page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('.popover [data-action=\"projectInfo\"]')\n",
+        "stack": [
+          "page.click: Timeout 30000ms exceeded.",
+          "Call log:",
+          "  - waiting for locator('.popover [data-action=\"projectInfo\"]')",
+          "",
+          "    at /Users/maliang/Documents/develop/maliang/私家写手/qa/pw/e-extra2.cjs:105:16"
+        ]
+      }
+    }
+  ],
+  "console": []
+}

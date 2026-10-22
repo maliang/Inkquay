@@ -1,0 +1,64 @@
+name: Release Inkquay
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: inkquay-release-main
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: Build macOS release
+    runs-on: macos-14
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.7
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set release version
+        id: version
+        run: |
+          BASE=$(node -p "require('./package.json').version.split('.').slice(0,2).join('.')")
+          VERSION="${BASE}.${{ github.run_number }}"
+          npm version "$VERSION" --no-git-tag-version
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing $VERSION"
+
+      - name: Build web bundle
+        run: pnpm build
+
+      - name: Build desktop server bundle
+        run: node scripts/build-desktop.mjs
+
+      - name: Package and publish macOS release
+        run: npx electron-builder --mac zip dmg --arm64 --publish always
+
+      - name: Summarize
+        run: |
+          echo "### Inkquay ${{ steps.version.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Published macOS arm64 DMG + ZIP to GitHub Releases." >> "$GITHUB_STEP_SUMMARY"
+          echo "Auto-update channel: latest-mac.yml" >> "$GITHUB_STEP_SUMMARY"

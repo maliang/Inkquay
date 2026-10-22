@@ -1,0 +1,470 @@
+{
+  "results": [
+    {
+      "step": "wizard",
+      "name": "新建作品弹窗打开=步骤 1、默认长篇",
+      "status": "pass",
+      "detail": {
+        "modal": true,
+        "overlay": true,
+        "step": "01",
+        "type": "novel",
+        "backHidden": true,
+        "bodyVisible": true,
+        "hint": "AI 会根据你的灵感生成可编辑的方案，不会直接替你写完。"
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "体裁「short」单选生效",
+      "status": "pass",
+      "detail": {
+        "active": "short",
+        "activeCount": 1
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "体裁「script」单选生效",
+      "status": "pass",
+      "detail": {
+        "active": "script",
+        "activeCount": 1
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "体裁「series」单选生效",
+      "status": "pass",
+      "detail": {
+        "active": "series",
+        "activeCount": 1
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "体裁「novel」单选生效",
+      "status": "pass",
+      "detail": {
+        "active": "novel",
+        "activeCount": 1
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "语气/体量 chips 单选",
+      "status": "pass",
+      "detail": {
+        "tone": "冷峻克制",
+        "toneCount": 1,
+        "length": "8 万字",
+        "lengthCount": 1
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "步骤 2：loading 可见、方案隐藏",
+      "status": "pass",
+      "detail": {
+        "step": "02",
+        "done": 1,
+        "loadingHidden": false,
+        "proposalHidden": true,
+        "nextLabel": "采用方案，开始写作",
+        "nextDisabled": false
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "loading 中「采用方案」按钮无 loading 禁用态且点击无提示",
+      "status": "pass",
+      "detail": {
+        "step": "02",
+        "disabled": false,
+        "toast": 0
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "1.3s 后展示 AI 方案",
+      "status": "pass",
+      "detail": {
+        "loadingHidden": true,
+        "proposalHidden": false,
+        "title": "雾中灯塔测试",
+        "premise": "一个守塔人在雾里收到自己的来信。",
+        "candidate": "AI 方案 · 候选 1/3",
+        "nextLabel": "采用方案，开始写作"
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "方案标题采用用户输入",
+      "status": "pass",
+      "detail": {
+        "title": "雾中灯塔测试"
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "方案灵感采用用户输入",
+      "status": "pass",
+      "detail": {
+        "premise": "一个守塔人在雾里收到自己的来信。"
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "换方案只改标题（候选计数不变）",
+      "status": "pass",
+      "detail": {
+        "title": "潮汐表上没有的名字",
+        "candidate": "AI 方案 · 候选 1/3",
+        "toast": "已换一个标题方案"
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "换方案后候选计数仍为 1/3",
+      "status": "fail",
+      "detail": {
+        "title": "潮汐表上没有的名字",
+        "candidate": "AI 方案 · 候选 1/3",
+        "toast": "已换一个标题方案"
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "从步骤 2 返回步骤 1 且保留输入",
+      "status": "pass",
+      "detail": {
+        "step": "01",
+        "title": "雾中灯塔测试",
+        "tone": "冷峻克制"
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "步骤 3：显示创建完成态、按钮=进入写作台",
+      "status": "pass",
+      "detail": {
+        "step": "03",
+        "done": 2,
+        "createdText": "《潮汐表上没有的名字》已创建。你可以直接开写，也可以先调整大纲。",
+        "nextLabel": "进入写作台",
+        "backHidden": true
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "步骤 3 才可返回（步骤 3 无返回按钮）",
+      "status": "pass",
+      "detail": {
+        "step": "03",
+        "done": 2,
+        "createdText": "《潮汐表上没有的名字》已创建。你可以直接开写，也可以先调整大纲。",
+        "nextLabel": "进入写作台",
+        "backHidden": true
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "创建完成态标题与换方案后的标题一致",
+      "status": "pass",
+      "detail": {
+        "createdText": "《潮汐表上没有的名字》已创建。你可以直接开写，也可以先调整大纲。",
+        "proposalTitle": "潮汐表上没有的名字"
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "步骤 3「进入写作台」应进入写作台",
+      "status": "fail",
+      "detail": {
+        "view": "library",
+        "overlayHidden": true,
+        "toast": [
+          "《雾中灯塔测试》已创建，开始写第一句话吧"
+        ],
+        "cards": 3
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "重新打开向导重置到步骤 1",
+      "status": "pass",
+      "detail": {
+        "step": "01",
+        "title": "",
+        "type": "novel",
+        "proposalHidden": true
+      }
+    },
+    {
+      "step": "wizard",
+      "name": "Esc 关闭向导",
+      "status": "pass"
+    },
+    {
+      "step": "wizard-template",
+      "name": "模板卡 2 预选体裁=short",
+      "status": "pass",
+      "detail": {
+        "active": "short"
+      }
+    },
+    {
+      "step": "wizard-template",
+      "name": "模板卡 3 预选体裁=script",
+      "status": "pass",
+      "detail": {
+        "active": "script"
+      }
+    },
+    {
+      "step": "wizard-template",
+      "name": "模板卡 4 预选体裁=series",
+      "status": "pass",
+      "detail": {
+        "active": "series"
+      }
+    },
+    {
+      "step": "keyboard",
+      "name": "⌘K 从写作台跳到作品库并聚焦搜索框",
+      "status": "pass",
+      "detail": {
+        "view": "library",
+        "focused": "libSearch"
+      }
+    },
+    {
+      "step": "keyboard",
+      "name": "搜索框可搜章节名（占位文案承诺「章节、人物」）",
+      "status": "fail",
+      "detail": {
+        "雨夜": 0
+      }
+    },
+    {
+      "step": "keyboard",
+      "name": "搜索框可搜人物名（占位文案承诺「人物」）",
+      "status": "fail",
+      "detail": {
+        "沈砚": 0
+      }
+    },
+    {
+      "step": "keyboard",
+      "name": "⌘S 保存提示",
+      "status": "pass"
+    },
+    {
+      "step": "keyboard",
+      "name": "⌘. 切换专注模式",
+      "status": "pass"
+    },
+    {
+      "step": "keyboard",
+      "name": "专注模式下 ⌘K 应退出专注或保持写作台",
+      "status": "fail",
+      "detail": {
+        "view": "library",
+        "focus": true,
+        "rail": "none",
+        "topbar": "none",
+        "panel": "none",
+        "exit": true
+      }
+    },
+    {
+      "step": "keyboard",
+      "name": "Esc 关闭新建向导",
+      "status": "pass"
+    },
+    {
+      "step": "keyboard",
+      "name": "弹窗打开时 ⌘K 不应改变底层视图",
+      "status": "pass",
+      "detail": {
+        "overlay": true,
+        "view": "library",
+        "focusOwner": "libSearch"
+      }
+    },
+    {
+      "step": "layout-1280",
+      "name": "1280 library：无横向溢出",
+      "status": "pass",
+      "detail": {
+        "iw": 1280,
+        "ih": 800,
+        "docScroll": 1280,
+        "bodyScroll": 1280,
+        "bad": [],
+        "overflowing": []
+      }
+    },
+    {
+      "step": "layout-1280",
+      "name": "1280 studio：无横向溢出",
+      "status": "pass",
+      "detail": {
+        "iw": 1280,
+        "ih": 800,
+        "docScroll": 1280,
+        "bodyScroll": 1280,
+        "bad": [],
+        "overflowing": []
+      }
+    },
+    {
+      "step": "layout-1280",
+      "name": "1280 写作台工具栏不溢出",
+      "status": "pass",
+      "detail": {
+        "scroll": 608,
+        "client": 608
+      }
+    },
+    {
+      "step": "layout-1280",
+      "name": "1280 写作台三栏宽度合理（文档>500, AI>300）",
+      "status": "pass",
+      "detail": {
+        "doc": 608,
+        "ai": 322
+      }
+    },
+    {
+      "step": "layout-1280",
+      "name": "1280 outline：无横向溢出",
+      "status": "pass",
+      "detail": {
+        "iw": 1280,
+        "ih": 800,
+        "docScroll": 1280,
+        "bodyScroll": 1280,
+        "bad": [],
+        "overflowing": []
+      }
+    },
+    {
+      "step": "layout-1280",
+      "name": "1280 codex：无横向溢出",
+      "status": "pass",
+      "detail": {
+        "iw": 1280,
+        "ih": 800,
+        "docScroll": 1280,
+        "bodyScroll": 1280,
+        "bad": [],
+        "overflowing": []
+      }
+    },
+    {
+      "step": "layout-1280",
+      "name": "1280 screenplay：无横向溢出",
+      "status": "pass",
+      "detail": {
+        "iw": 1280,
+        "ih": 800,
+        "docScroll": 1280,
+        "bodyScroll": 1280,
+        "bad": [],
+        "overflowing": []
+      }
+    },
+    {
+      "step": "layout-1280",
+      "name": "1280 向导弹窗完整显示",
+      "status": "pass",
+      "detail": {
+        "rect": {
+          "top": 63.3125,
+          "bottom": 736.671875,
+          "left": 280,
+          "right": 1000
+        },
+        "iw": 1280,
+        "ih": 800,
+        "bodyScroll": 452,
+        "bodyClient": 452
+      }
+    },
+    {
+      "step": "layout-1024",
+      "name": "1024 library：无横向溢出",
+      "status": "pass",
+      "detail": {
+        "iw": 1024,
+        "ih": 800,
+        "docScroll": 1024,
+        "bodyScroll": 1024,
+        "bad": [],
+        "overflowing": []
+      }
+    },
+    {
+      "step": "layout-1024",
+      "name": "1024 studio：无横向溢出",
+      "status": "pass",
+      "detail": {
+        "iw": 1024,
+        "ih": 800,
+        "docScroll": 1024,
+        "bodyScroll": 1024,
+        "bad": [],
+        "overflowing": []
+      }
+    },
+    {
+      "step": "layout-1024",
+      "name": "1024 outline：无横向溢出",
+      "status": "pass",
+      "detail": {
+        "iw": 1024,
+        "ih": 800,
+        "docScroll": 1024,
+        "bodyScroll": 1024,
+        "bad": [],
+        "overflowing": []
+      }
+    },
+    {
+      "step": "layout-1024",
+      "name": "1024 codex：无横向溢出",
+      "status": "pass",
+      "detail": {
+        "iw": 1024,
+        "ih": 800,
+        "docScroll": 1024,
+        "bodyScroll": 1024,
+        "bad": [],
+        "overflowing": []
+      }
+    },
+    {
+      "step": "layout-1024",
+      "name": "1024 screenplay：无横向溢出",
+      "status": "pass",
+      "detail": {
+        "iw": 1024,
+        "ih": 800,
+        "docScroll": 1024,
+        "bodyScroll": 1024,
+        "bad": [],
+        "overflowing": []
+      }
+    },
+    {
+      "step": "console",
+      "name": "控制台无 error",
+      "status": "pass",
+      "detail": {
+        "errors": []
+      }
+    }
+  ],
+  "console": []
+}

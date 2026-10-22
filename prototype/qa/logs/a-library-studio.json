@@ -1,0 +1,618 @@
+{
+  "results": [
+    {
+      "step": "library",
+      "name": "初始视图=作品库",
+      "status": "pass",
+      "detail": {
+        "actual": "library"
+      }
+    },
+    {
+      "step": "library",
+      "name": "作品卡数量=3",
+      "status": "pass"
+    },
+    {
+      "step": "library",
+      "name": "顶部作品库标题",
+      "status": "pass"
+    },
+    {
+      "step": "library",
+      "name": "筛选「novel」",
+      "status": "pass",
+      "detail": {
+        "visible": [
+          "fog"
+        ],
+        "active": "novel"
+      }
+    },
+    {
+      "step": "library",
+      "name": "筛选「short」",
+      "status": "pass",
+      "detail": {
+        "visible": [
+          "ferry"
+        ],
+        "active": "short"
+      }
+    },
+    {
+      "step": "library",
+      "name": "筛选「script」",
+      "status": "pass",
+      "detail": {
+        "visible": [
+          "echo"
+        ],
+        "active": "script"
+      }
+    },
+    {
+      "step": "library",
+      "name": "筛选「all」",
+      "status": "pass",
+      "detail": {
+        "visible": [
+          "fog",
+          "ferry",
+          "echo"
+        ],
+        "active": "all"
+      }
+    },
+    {
+      "step": "library-search",
+      "name": "搜索「渡轮」只保留 ferry",
+      "status": "fail",
+      "detail": {
+        "vis": [
+          "fog",
+          "ferry",
+          "echo"
+        ]
+      }
+    },
+    {
+      "step": "library-search",
+      "name": "搜索无结果时「开始新的故事」卡仍在",
+      "status": "fail",
+      "detail": {
+        "nothing": 0,
+        "newCardVisible": false
+      }
+    },
+    {
+      "step": "library-search",
+      "name": "继续写作 -> 写作台",
+      "status": "pass",
+      "detail": {
+        "view": "studio"
+      }
+    },
+    {
+      "step": "library-search",
+      "name": "默认章节=第七章 雨夜的访客",
+      "status": "pass",
+      "detail": {
+        "no": "第七章",
+        "title": "雨夜的访客"
+      }
+    },
+    {
+      "step": "library-search",
+      "name": "章节树激活项=ch7",
+      "status": "pass"
+    },
+    {
+      "step": "studio-chapters",
+      "name": "切到第八章：标题同步",
+      "status": "pass",
+      "detail": {
+        "title": "潮汐表"
+      }
+    },
+    {
+      "step": "studio-chapters",
+      "name": "切到第八章：正文同步",
+      "status": "pass"
+    },
+    {
+      "step": "studio-chapters",
+      "name": "切到第八章：字数更新",
+      "status": "pass",
+      "detail": {
+        "ch7": "456",
+        "ch8": "103"
+      }
+    },
+    {
+      "step": "studio-chapters",
+      "name": "切到第八章：大纲树激活同步",
+      "status": "pass"
+    },
+    {
+      "step": "studio-chapters",
+      "name": "第八章隐藏 AI 建议块",
+      "status": "pass"
+    },
+    {
+      "step": "studio-chapters",
+      "name": "切到待写第九章：正文为空且字数为 0",
+      "status": "pass",
+      "detail": {
+        "html": "",
+        "words": "0",
+        "no": "第九章",
+        "status": "待写"
+      }
+    },
+    {
+      "step": "studio-edit",
+      "name": "输入后字数增加",
+      "status": "pass",
+      "detail": {
+        "beforeEdit": 456,
+        "afterType": 483
+      }
+    },
+    {
+      "step": "studio-edit",
+      "name": "输入后保存态=正在保存…",
+      "status": "pass",
+      "detail": {
+        "midSave": "正在保存…"
+      }
+    },
+    {
+      "step": "studio-edit",
+      "name": "章节树字数实时更新",
+      "status": "pass",
+      "detail": {
+        "treeMeta": "483 字",
+        "afterType": 483
+      }
+    },
+    {
+      "step": "studio-edit",
+      "name": "800ms 后保存态=已保存",
+      "status": "pass",
+      "detail": {
+        "afterSave": "已保存"
+      }
+    },
+    {
+      "step": "studio-edit",
+      "name": "标题编辑同步到章节树",
+      "status": "pass",
+      "detail": {
+        "treeTitle": "雨夜的访客（测试）"
+      }
+    },
+    {
+      "step": "studio-toolbar",
+      "name": "选中段落后点「加粗」生效",
+      "status": "pass",
+      "detail": {
+        "boldTag": 1,
+        "changed": true
+      }
+    },
+    {
+      "step": "studio-toolbar",
+      "name": "插入分隔线追加到正文",
+      "status": "pass"
+    },
+    {
+      "step": "studio-toolbar",
+      "name": "插入分隔线有 toast",
+      "status": "pass"
+    },
+    {
+      "step": "studio-new-chapter",
+      "name": "新建章节正文不应继承上一章",
+      "status": "pass",
+      "detail": {
+        "newWords": "0",
+        "ch7Len": 793,
+        "newLen": 0
+      }
+    },
+    {
+      "step": "studio-new-chapter",
+      "name": "新建章节字数显示为首章同款数据",
+      "status": "pass",
+      "detail": {
+        "words": "0"
+      }
+    },
+    {
+      "step": "studio-new-chapter",
+      "name": "新建章节后目录文字应 +1",
+      "status": "pass",
+      "detail": {
+        "count": "19 / 24 章"
+      }
+    },
+    {
+      "step": "studio-new-chapter",
+      "name": "新建章节后章节树条目 +1",
+      "status": "pass",
+      "detail": {
+        "treeItems": [
+          "ch5",
+          "ch6",
+          "ch7",
+          "ch8",
+          "ch9",
+          "new-1792513771393"
+        ]
+      }
+    },
+    {
+      "step": "studio-new-chapter",
+      "name": "新建章节后标题=未命名章节",
+      "status": "pass",
+      "detail": {
+        "title": "未命名章节"
+      }
+    },
+    {
+      "step": "studio-new-chapter",
+      "name": "新建章节后激活项为新章节",
+      "status": "pass",
+      "detail": {
+        "active": "new-1792513771393"
+      }
+    },
+    {
+      "step": "studio-new-chapter",
+      "name": "编辑内容在新建章节后仍保留在 ch7",
+      "status": "pass",
+      "detail": {
+        "lenBefore": 793,
+        "lenAfter": 793,
+        "containsMark": true
+      }
+    },
+    {
+      "step": "studio-ghost",
+      "name": "第七章默认显示 AI 建议续写块",
+      "status": "pass"
+    },
+    {
+      "step": "studio-ghost",
+      "name": "「换一个」替换建议文案",
+      "status": "pass",
+      "detail": {
+        "same": false
+      }
+    },
+    {
+      "step": "studio-ghost",
+      "name": "「接受」写入正文",
+      "status": "pass",
+      "detail": {
+        "wBeforeGhost": 456,
+        "wAfterGhost": 497,
+        "ghostGone": true
+      }
+    },
+    {
+      "step": "studio-ghost",
+      "name": "接受建议后 toast",
+      "status": "pass"
+    },
+    {
+      "step": "studio-ghost",
+      "name": "按 Tab 接受 AI 建议",
+      "status": "pass",
+      "detail": {
+        "ghost": true,
+        "aiParas": 1
+      }
+    },
+    {
+      "step": "studio-ai",
+      "name": "快捷提示产生用户消息+AI消息",
+      "status": "pass",
+      "detail": {
+        "before": 3,
+        "after": 5,
+        "userBubble": "先写气氛：雨夜、黑暗和门缝里的光，不要揭晓访客身份。"
+      }
+    },
+    {
+      "step": "studio-ai",
+      "name": "流式输出文本递增",
+      "status": "pass",
+      "detail": {
+        "streaming1": {
+          "len": 12,
+          "sendDisabled": true,
+          "typingGone": true,
+          "name": "正在生成…"
+        },
+        "streaming2": 64
+      }
+    },
+    {
+      "step": "studio-ai",
+      "name": "生成中禁用发送按钮",
+      "status": "pass",
+      "detail": {
+        "streaming1": {
+          "len": 12,
+          "sendDisabled": true,
+          "typingGone": true,
+          "name": "正在生成…"
+        }
+      }
+    },
+    {
+      "step": "studio-ai",
+      "name": "生成完成后恢复发送",
+      "status": "pass"
+    },
+    {
+      "step": "studio-ai",
+      "name": "生成完成后出现「插入正文」",
+      "status": "pass",
+      "detail": {
+        "meta": "生成于刚刚 · 使用 DeepSeek V3.2"
+      }
+    },
+    {
+      "step": "studio-ai",
+      "name": "发送后输入框清空",
+      "status": "pass"
+    },
+    {
+      "step": "studio-ai",
+      "name": "插入正文增加字数",
+      "status": "pass",
+      "detail": {
+        "wBeforeInsert": 456,
+        "insertResult": {
+          "words": "535",
+          "aiParas": 2,
+          "btnText": "已插入正文",
+          "btnDisabled": true,
+          "ghostDisplay": "none"
+        }
+      }
+    },
+    {
+      "step": "studio-ai",
+      "name": "插入后按钮变「已插入正文」且禁用",
+      "status": "pass",
+      "detail": {
+        "words": "535",
+        "aiParas": 2,
+        "btnText": "已插入正文",
+        "btnDisabled": true,
+        "ghostDisplay": "none"
+      }
+    },
+    {
+      "step": "studio-ai",
+      "name": "⌘Enter 发送消息",
+      "status": "pass",
+      "detail": {
+        "streaming": true,
+        "input": "",
+        "lastMsgCount": 7
+      }
+    },
+    {
+      "step": "studio-check",
+      "name": "切「连续性检查」：面板与输入框同步隐藏",
+      "status": "pass",
+      "detail": {
+        "aiTabActive": "check",
+        "bodyHidden": true,
+        "checkHidden": false,
+        "composerHidden": true,
+        "items": 3,
+        "sendVisible": false
+      }
+    },
+    {
+      "step": "studio-check",
+      "name": "连续性检查列出 3 条",
+      "status": "pass",
+      "detail": {
+        "items": 3
+      }
+    },
+    {
+      "step": "studio-check",
+      "name": "检查页隐藏发送按钮",
+      "status": "pass",
+      "detail": {
+        "sendVisible": false
+      }
+    },
+    {
+      "step": "studio-check",
+      "name": "「重新检查」有 loading 与完成反馈",
+      "status": "pass",
+      "detail": {
+        "runBefore": "重新检查",
+        "runMid": "检查中…",
+        "runAfter": "重新检查"
+      }
+    },
+    {
+      "step": "studio-check",
+      "name": "检查全书连续性 toast",
+      "status": "pass"
+    },
+    {
+      "step": "studio-check",
+      "name": "切回「共笔」：面板恢复",
+      "status": "pass",
+      "detail": {
+        "bodyHidden": false,
+        "checkHidden": true,
+        "composerHidden": false,
+        "msgCount": 7
+      }
+    },
+    {
+      "step": "studio-model",
+      "name": "模型菜单打开且不越界",
+      "status": "pass",
+      "detail": {
+        "hidden": false,
+        "rect": {
+          "top": 102.5,
+          "left": 1165.5,
+          "right": 1411.5,
+          "bottom": 302.484375
+        },
+        "iw": 1440,
+        "ih": 900
+      }
+    },
+    {
+      "step": "studio-model",
+      "name": "切换模型后按钮文案更新且菜单关闭",
+      "status": "pass",
+      "detail": {
+        "modelPill": "Claude Sonnet 4.5",
+        "popHidden": true
+      }
+    },
+    {
+      "step": "studio-ai-collapse",
+      "name": "收起 AI 面板后文档区变宽",
+      "status": "pass",
+      "detail": {
+        "docWidthBefore": 695.609375,
+        "collapsed": {
+          "hiddenClass": true,
+          "aiDisplay": "none",
+          "docWidth": 1070,
+          "expandable": true,
+          "overflow": false
+        }
+      }
+    },
+    {
+      "step": "studio-ai-collapse",
+      "name": "再次点击展开 AI 面板",
+      "status": "pass",
+      "detail": {
+        "hiddenClass": false,
+        "aiDisplay": "flex"
+      }
+    },
+    {
+      "step": "studio-focus",
+      "name": "专注模式隐藏导航/面板/AI 且出现退出按钮",
+      "status": "pass",
+      "detail": {
+        "cls": true,
+        "railDisplay": "none",
+        "panelDisplay": "none",
+        "aiDisplay": "none",
+        "exitVisible": true,
+        "overflow": false
+      }
+    },
+    {
+      "step": "studio-focus",
+      "name": "Esc 退出专注模式",
+      "status": "pass",
+      "detail": {
+        "cls": false,
+        "railDisplay": "flex"
+      }
+    },
+    {
+      "step": "studio-annotation",
+      "name": "点击批注角标打开浮层且不越界",
+      "status": "pass",
+      "detail": {
+        "hidden": false,
+        "rect": {
+          "top": 500.984375,
+          "left": 603.0625,
+          "right": 887.0625,
+          "bottom": 624.53125
+        },
+        "iw": 1440,
+        "ih": 900
+      }
+    },
+    {
+      "step": "studio-annotation",
+      "name": "Esc 关闭批注浮层",
+      "status": "pass"
+    },
+    {
+      "step": "studio-annotation",
+      "name": "「标记已解决」关闭浮层并移除下划线",
+      "status": "pass",
+      "detail": {
+        "hidden": true,
+        "border": ""
+      }
+    },
+    {
+      "step": "studio-export",
+      "name": "导出弹窗打开",
+      "status": "pass"
+    },
+    {
+      "step": "studio-export",
+      "name": "导出内容与格式可切换",
+      "status": "pass",
+      "detail": {
+        "option": "outline",
+        "format": "PDF"
+      }
+    },
+    {
+      "step": "studio-export",
+      "name": "导出后关闭弹窗并提示 PDF",
+      "status": "pass",
+      "detail": {
+        "overlayHidden": true,
+        "toasts": [
+          "批注已标记为已解决",
+          "已开始导出 PDF，完成后会通知你"
+        ]
+      }
+    },
+    {
+      "step": "studio-project-menu",
+      "name": "作品菜单打开",
+      "status": "fail",
+      "detail": {
+        "menuOpen": 2
+      }
+    },
+    {
+      "step": "studio-project-menu",
+      "name": "Esc 关闭作品菜单浮层（预期：关闭）",
+      "status": "fail",
+      "detail": {
+        "menuAfterEsc": 2
+      }
+    },
+    {
+      "step": "console",
+      "name": "控制台无 error/warning",
+      "status": "pass",
+      "detail": {
+        "errors": []
+      }
+    }
+  ],
+  "console": []
+}

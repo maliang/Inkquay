@@ -1,0 +1,669 @@
+{
+  "results": [
+    {
+      "step": "studio-new-chapter-loss",
+      "name": "编辑后立即新建章节：内容被写入新章节",
+      "status": "pass",
+      "detail": {
+        "inNew": true
+      }
+    },
+    {
+      "step": "studio-new-chapter-loss",
+      "name": "编辑后立即新建章节：原章节保留未保存内容",
+      "status": "fail",
+      "detail": {
+        "backInCh7": false
+      }
+    },
+    {
+      "step": "cross-view",
+      "name": "打开短篇《最后一班渡轮》进入写作台",
+      "status": "pass",
+      "detail": {
+        "view": "studio",
+        "title": "末班船",
+        "welcome": "",
+        "chips": [
+          "全文",
+          "老周",
+          "末班渡轮",
+          "三年前的船票"
+        ],
+        "tabs": [
+          "正文"
+        ],
+        "note": "访客的伞留在门外。让“没有撑伞”成为第 14 章识破身份的伏笔。"
+      }
+    },
+    {
+      "step": "cross-view",
+      "name": "短篇顶栏只有「正文」tab",
+      "status": "pass",
+      "detail": {
+        "view": "studio",
+        "title": "末班船",
+        "welcome": "",
+        "chips": [
+          "全文",
+          "老周",
+          "末班渡轮",
+          "三年前的船票"
+        ],
+        "tabs": [
+          "正文"
+        ],
+        "note": "访客的伞留在门外。让“没有撑伞”成为第 14 章识破身份的伏笔。"
+      }
+    },
+    {
+      "step": "cross-view",
+      "name": "从短篇点侧栏「大纲」切换回长篇小说大纲",
+      "status": "pass",
+      "detail": {
+        "view": "outline",
+        "topbar": "雾港来信\n长篇小说"
+      }
+    },
+    {
+      "step": "cross-view",
+      "name": "切回写作台后项目=雾港来信",
+      "status": "pass",
+      "detail": {
+        "topbar": "雾港来信长篇小说",
+        "welcome": "",
+        "chips": [
+          "全文",
+          "老周",
+          "末班渡轮",
+          "三年前的船票"
+        ],
+        "firstBubble": "我已通读《最后一班渡轮》全文与人物设定。要先把悬念收紧，还是补一段老周的过去？",
+        "chapterTitle": "被撕掉的一页",
+        "panelNote": "访客的伞留在门外。让“没有撑伞”成为第 14 章识破身份的伏笔。",
+        "activeChapter": "ch5"
+      }
+    },
+    {
+      "step": "cross-view",
+      "name": "切回写作台后 AI 欢迎语同步为雾港",
+      "status": "fail",
+      "detail": {
+        "welcome": "",
+        "firstBubble": "我已通读《最后一班渡轮》全文与人物设定。要先把悬念收紧，还是补一段老周的过去？"
+      }
+    },
+    {
+      "step": "cross-view",
+      "name": "切回写作台后记忆 chips 同步",
+      "status": "fail",
+      "detail": {
+        "chips": [
+          "全文",
+          "老周",
+          "末班渡轮",
+          "三年前的船票"
+        ]
+      }
+    },
+    {
+      "step": "cross-view",
+      "name": "切回写作台后章节激活项存在",
+      "status": "fail",
+      "detail": {
+        "activeChapter": "ch5"
+      }
+    },
+    {
+      "step": "outline",
+      "name": "大纲视图可滚动",
+      "status": "pass",
+      "detail": {
+        "sh": 1105,
+        "ch": 842,
+        "overflowY": "auto"
+      }
+    },
+    {
+      "step": "outline",
+      "name": "默认诊断=第七章且唯一 active",
+      "status": "pass",
+      "detail": {
+        "title": "第七章 · 雨夜的访客",
+        "active": [
+          "7"
+        ],
+        "tip": "建议在本章结尾保留访客的伞，作为第 14 章识破身份的物证。"
+      }
+    },
+    {
+      "step": "outline",
+      "name": "点第八章 beat：右侧诊断标题/描述同步",
+      "status": "fail",
+      "detail": {
+        "title": "第 8 章 · 被撕掉的一页",
+        "text": "沈砚在档案馆发现 2006 年港务记录被精准裁走一页，切口整齐得像外科手术。",
+        "goal": "把私人失踪案升级为系统性的掩盖。",
+        "active": [
+          "8"
+        ],
+        "current": [
+          "7"
+        ],
+        "tooltip": "第 8 章 · 被撕掉的一页",
+        "tension": "张力 8.3"
+      }
+    },
+    {
+      "step": "outline",
+      "name": "点第八章 beat：仅一张卡 active",
+      "status": "pass",
+      "detail": {
+        "title": "第 8 章 · 被撕掉的一页",
+        "text": "沈砚在档案馆发现 2006 年港务记录被精准裁走一页，切口整齐得像外科手术。",
+        "goal": "把私人失踪案升级为系统性的掩盖。",
+        "active": [
+          "8"
+        ],
+        "current": [
+          "7"
+        ],
+        "tooltip": "第 8 章 · 被撕掉的一页",
+        "tension": "张力 8.3"
+      }
+    },
+    {
+      "step": "outline",
+      "name": "原「写作中」卡保留 is-current 高亮",
+      "status": "pass",
+      "detail": {
+        "title": "第 8 章 · 被撕掉的一页",
+        "text": "沈砚在档案馆发现 2006 年港务记录被精准裁走一页，切口整齐得像外科手术。",
+        "goal": "把私人失踪案升级为系统性的掩盖。",
+        "active": [
+          "8"
+        ],
+        "current": [
+          "7"
+        ],
+        "tooltip": "第 8 章 · 被撕掉的一页",
+        "tension": "张力 8.3"
+      }
+    },
+    {
+      "step": "outline",
+      "name": "无 data-insight 的 beat 使用兜底诊断",
+      "status": "fail",
+      "detail": {
+        "title": "第 11 章 · 沉船名单",
+        "text": "二十三个名字，少了一个",
+        "tip": "写完这一章后，回到伏笔台账确认它是否与前后章形成呼应。"
+      }
+    },
+    {
+      "step": "outline",
+      "name": "待写 beat（第12章）诊断标题不串号",
+      "status": "pass",
+      "detail": {
+        "title": "第 12 章 · 母亲的名字",
+        "text": "尚未展开"
+      }
+    },
+    {
+      "step": "outline-panel",
+      "name": "侧栏分幕条目点击应有反馈（切换幕/大纲定位）",
+      "status": "fail",
+      "detail": {
+        "actBefore": "I\n              潮声第 1–6 章\n              6/6",
+        "actAfter": {
+          "active": "I\n              潮声第 1–6 章\n              6/6",
+          "toast": 0
+        },
+        "actCursor": "pointer"
+      }
+    },
+    {
+      "step": "outline-ai",
+      "name": "「节奏诊断」点击有 toast 反馈",
+      "status": "pass",
+      "detail": {
+        "before": 0,
+        "after": 1
+      }
+    },
+    {
+      "step": "outline-ai",
+      "name": "「AI 推演第二幕」点击有 toast 反馈",
+      "status": "pass",
+      "detail": {
+        "before": 1,
+        "after": 2
+      }
+    },
+    {
+      "step": "outline-ai",
+      "name": "「添加场景」点击有 toast 反馈",
+      "status": "pass",
+      "detail": {
+        "before": 2,
+        "after": 3
+      }
+    },
+    {
+      "step": "outline-ai",
+      "name": "「卡片视图」点击有 toast 反馈",
+      "status": "pass",
+      "detail": {
+        "before": 3,
+        "after": 4
+      }
+    },
+    {
+      "step": "codex",
+      "name": "设定库默认人物 tab + 档案栏可见",
+      "status": "pass",
+      "detail": {
+        "tab": "characters",
+        "nav": "characters",
+        "inspector": "block",
+        "chars": 8,
+        "hiddenPanes": 5
+      }
+    },
+    {
+      "step": "codex",
+      "name": "人物卡 8 张（tab 标签写 12）",
+      "status": "pass",
+      "detail": {
+        "tab": "characters",
+        "nav": "characters",
+        "inspector": "block",
+        "chars": 8,
+        "hiddenPanes": 5
+      }
+    },
+    {
+      "step": "codex",
+      "name": "点林雾：档案全部字段同步",
+      "status": "pass",
+      "detail": {
+        "name": "林雾",
+        "role": "女主 · 白塔灯塔看守人",
+        "age": "28",
+        "secret": "她保存着沈鹭的日记，却一直没有交给沈砚。",
+        "tags": "寡言警觉熟悉潮汐",
+        "active": "lin",
+        "relations": [
+          "沈砚",
+          "沈鹭",
+          "周隐"
+        ]
+      }
+    },
+    {
+      "step": "codex",
+      "name": "点阿荻：档案同步",
+      "status": "pass",
+      "detail": {
+        "name": "阿荻",
+        "age": "17"
+      }
+    },
+    {
+      "step": "codex-tabs",
+      "name": "切「locations」：内容区/侧栏 tab 同步、仅一个 pane 可见",
+      "status": "pass",
+      "detail": {
+        "tabActive": "locations",
+        "navActive": "locations",
+        "paneVisible": true,
+        "otherVisible": 1,
+        "inspector": "none",
+        "wide": true,
+        "items": 6,
+        "tab": "locations"
+      }
+    },
+    {
+      "step": "codex-tabs",
+      "name": "切「organizations」：内容区/侧栏 tab 同步、仅一个 pane 可见",
+      "status": "pass",
+      "detail": {
+        "tabActive": "organizations",
+        "navActive": "organizations",
+        "paneVisible": true,
+        "otherVisible": 1,
+        "inspector": "none",
+        "wide": true,
+        "items": 4,
+        "tab": "organizations"
+      }
+    },
+    {
+      "step": "codex-tabs",
+      "name": "切「props」：内容区/侧栏 tab 同步、仅一个 pane 可见",
+      "status": "pass",
+      "detail": {
+        "tabActive": "props",
+        "navActive": "props",
+        "paneVisible": true,
+        "otherVisible": 1,
+        "inspector": "none",
+        "wide": true,
+        "items": 6,
+        "tab": "props"
+      }
+    },
+    {
+      "step": "codex-tabs",
+      "name": "切「timeline」：内容区/侧栏 tab 同步、仅一个 pane 可见",
+      "status": "pass",
+      "detail": {
+        "tabActive": "timeline",
+        "navActive": "timeline",
+        "paneVisible": true,
+        "otherVisible": 1,
+        "inspector": "none",
+        "wide": true,
+        "items": 10,
+        "tab": "timeline"
+      }
+    },
+    {
+      "step": "codex-tabs",
+      "name": "切「foreshadow」：内容区/侧栏 tab 同步、仅一个 pane 可见",
+      "status": "pass",
+      "detail": {
+        "tabActive": "foreshadow",
+        "navActive": "foreshadow",
+        "paneVisible": true,
+        "otherVisible": 1,
+        "inspector": "none",
+        "wide": true,
+        "items": 5,
+        "tab": "foreshadow"
+      }
+    },
+    {
+      "step": "codex-tabs",
+      "name": "地点渲染 6 条（tab 标签写 8）",
+      "status": "pass",
+      "detail": {
+        "items": 6
+      }
+    },
+    {
+      "step": "codex-tabs",
+      "name": "组织渲染 4 条",
+      "status": "pass",
+      "detail": {
+        "items": 4
+      }
+    },
+    {
+      "step": "codex-tabs",
+      "name": "道具渲染 6 条",
+      "status": "pass",
+      "detail": {
+        "items": 6
+      }
+    },
+    {
+      "step": "codex-tabs",
+      "name": "时间线渲染 10 条",
+      "status": "pass",
+      "detail": {
+        "items": 10
+      }
+    },
+    {
+      "step": "codex-tabs",
+      "name": "伏笔渲染 5 条",
+      "status": "pass",
+      "detail": {
+        "items": 5
+      }
+    },
+    {
+      "step": "codex-tabs",
+      "name": "返回人物 tab：档案栏恢复且保留上次选中人物",
+      "status": "pass",
+      "detail": {
+        "inspector": "block",
+        "wide": false,
+        "active": "di",
+        "name": "阿荻"
+      }
+    },
+    {
+      "step": "codex-search",
+      "name": "人物搜索「林」过滤卡片",
+      "status": "pass",
+      "detail": {
+        "visible": [
+          "shen",
+          "lin",
+          "lu"
+        ],
+        "total": 8,
+        "inspector": "阿荻"
+      }
+    },
+    {
+      "step": "codex-search",
+      "name": "搜索无结果有空状态提示",
+      "status": "fail",
+      "detail": {
+        "visible": 0,
+        "hasEmptyState": false
+      }
+    },
+    {
+      "step": "codex-search",
+      "name": "搜索词在切换 tab 后仍生效于新面板",
+      "status": "fail",
+      "detail": {
+        "query": "林",
+        "visibleLocations": 16,
+        "totalLocations": 6
+      }
+    },
+    {
+      "step": "codex-actions",
+      "name": "「AI 补全设定」点击有 toast 反馈",
+      "status": "pass",
+      "detail": {
+        "before": 0,
+        "after": 1
+      }
+    },
+    {
+      "step": "codex-actions",
+      "name": "「新增人物」点击有 toast 反馈",
+      "status": "pass",
+      "detail": {
+        "before": 1,
+        "after": 2
+      }
+    },
+    {
+      "step": "codex-actions",
+      "name": "「AI 深化人物」点击有 toast 反馈",
+      "status": "pass",
+      "detail": {
+        "before": 2,
+        "after": 3
+      }
+    },
+    {
+      "step": "codex-actions",
+      "name": "「导出设定集」打开导出弹窗",
+      "status": "pass"
+    },
+    {
+      "step": "codex-actions",
+      "name": "Esc 关闭导出弹窗",
+      "status": "pass"
+    },
+    {
+      "step": "screenplay",
+      "name": "作品卡「回声」进入剧本工坊",
+      "status": "pass",
+      "detail": {
+        "view": "screenplay",
+        "scenes": 5,
+        "activeScene": "s12",
+        "heading": "12. 内景 · 渡轮底舱 · 夜",
+        "inspector": "场 12 · 渡轮底舱",
+        "modeActive": "script",
+        "topbarTitle": "回声电影剧本",
+        "panelHidden": false
+      }
+    },
+    {
+      "step": "screenplay",
+      "name": "分镜板/剧本 segmented 默认剧本正文",
+      "status": "pass",
+      "detail": {
+        "view": "screenplay",
+        "scenes": 5,
+        "activeScene": "s12",
+        "heading": "12. 内景 · 渡轮底舱 · 夜",
+        "inspector": "场 12 · 渡轮底舱",
+        "modeActive": "script",
+        "topbarTitle": "回声电影剧本",
+        "panelHidden": false
+      }
+    },
+    {
+      "step": "screenplay",
+      "name": "默认场次=12",
+      "status": "pass",
+      "detail": {
+        "view": "screenplay",
+        "scenes": 5,
+        "activeScene": "s12",
+        "heading": "12. 内景 · 渡轮底舱 · 夜",
+        "inspector": "场 12 · 渡轮底舱",
+        "modeActive": "script",
+        "topbarTitle": "回声电影剧本",
+        "panelHidden": false
+      }
+    },
+    {
+      "step": "screenplay",
+      "name": "切场 13：正文/页脚/侧栏/评分同步",
+      "status": "pass",
+      "detail": {
+        "heading": "13. 内景 · 声音修复室 · 日",
+        "pageNo": "13.",
+        "name": "场 13 · 声音修复室",
+        "scores": [
+          "4.0",
+          "3.0",
+          "5.0"
+        ],
+        "cast": [
+          "沈沈砚",
+          "林林雾",
+          "鹭沈鹭"
+        ],
+        "active": "s13",
+        "func": "让沈鹭“发声”，把失踪者从线索变成有意志的人物，同时把林雾推向坦白。"
+      }
+    },
+    {
+      "step": "screenplay",
+      "name": "切场 13：出场人物同步为 3 人",
+      "status": "pass",
+      "detail": {
+        "cast": [
+          "沈沈砚",
+          "林林雾",
+          "鹭沈鹭"
+        ]
+      }
+    },
+    {
+      "step": "screenplay",
+      "name": "切「分镜板」：仅分镜面板可见且有 6 张卡",
+      "status": "pass",
+      "detail": {
+        "mode": "boards",
+        "boardsVisible": true,
+        "scriptVisible": false,
+        "cards": 6,
+        "head": "场 12 · 渡轮底舱"
+      }
+    },
+    {
+      "step": "screenplay",
+      "name": "分镜板标题与当前场次(13)一致",
+      "status": "fail",
+      "detail": {
+        "head": "场 12 · 渡轮底舱"
+      }
+    },
+    {
+      "step": "screenplay",
+      "name": "切回「剧本正文」：面板不残留",
+      "status": "pass",
+      "detail": {
+        "mode": "script",
+        "scriptVisible": true,
+        "boardsVisible": false
+      }
+    },
+    {
+      "step": "screenplay",
+      "name": "分镜模式下点场次 14 自动回到剧本正文",
+      "status": "pass",
+      "detail": {
+        "mode": "script",
+        "heading": "14. 内景 · 沈砚家 · 夜",
+        "name": "场 14 · 沈砚家"
+      }
+    },
+    {
+      "step": "screenplay",
+      "name": "「生成这一场分镜」切到分镜板",
+      "status": "pass",
+      "detail": {
+        "mode": "boards",
+        "head": "场 12 · 渡轮底舱",
+        "name": "场 14 · 沈砚家",
+        "toast": "已生成 6 个分镜草案"
+      }
+    },
+    {
+      "step": "screenplay",
+      "name": "生成分镜后板头与当前场次(14)同步",
+      "status": "fail",
+      "detail": {
+        "mode": "boards",
+        "head": "场 12 · 渡轮底舱",
+        "name": "场 14 · 沈砚家",
+        "toast": "已生成 6 个分镜草案"
+      }
+    },
+    {
+      "step": "screenplay",
+      "name": "剧本页返回作品库：视图/侧栏/面板状态复位",
+      "status": "pass",
+      "detail": {
+        "view": "library",
+        "railActive": "library",
+        "panelHidden": true
+      }
+    },
+    {
+      "step": "console",
+      "name": "控制台无 error",
+      "status": "pass",
+      "detail": {
+        "errors": []
+      }
+    }
+  ],
+  "console": []
+}

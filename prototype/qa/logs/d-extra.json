@@ -1,0 +1,163 @@
+{
+  "results": [
+    {
+      "step": "codex-search-tab",
+      "name": "无匹配搜索词下切到「地点」应为 0，实际未过滤",
+      "status": "fail",
+      "detail": {
+        "query": "不存在的角色",
+        "visibleLocations": 6,
+        "totalLocations": 6
+      }
+    },
+    {
+      "step": "codex-search-tab",
+      "name": "返回人物 tab 时旧过滤仍然生效（与搜索框一致）",
+      "status": "pass",
+      "detail": {
+        "visibleChars": 0,
+        "query": "不存在的角色"
+      }
+    },
+    {
+      "step": "outline-tooltip",
+      "name": "切换 beat 后图表 tooltip 位置跟随选中章节",
+      "status": "fail",
+      "detail": {
+        "tipBefore": {
+          "left": 793,
+          "top": 288,
+          "text": "第 7 章 · 雨夜的访客"
+        },
+        "tipAfter": {
+          "left": 793,
+          "top": 288,
+          "text": "第 19 章 · 回港",
+          "tension": "张力 8.6"
+        }
+      }
+    },
+    {
+      "step": "annotation-residue",
+      "name": "切章节后批注浮层应关闭（无残留）",
+      "status": "pass",
+      "detail": {
+        "annoOpen": true,
+        "annoAfterChapter": {
+          "popHidden": true,
+          "chapter": "潮汐表",
+          "markExists": false
+        }
+      }
+    },
+    {
+      "step": "ai-collapse-persist",
+      "name": "切换作品后 AI 面板收起状态保留（需再次点击工具栏）",
+      "status": "info",
+      "detail": {
+        "collapsedFog": true,
+        "collapsedFerry": {
+          "aiHidden": true,
+          "aiDisplay": "none",
+          "toolbarToggle": true
+        }
+      }
+    },
+    {
+      "step": "project-menu",
+      "name": "作品菜单打开",
+      "status": "pass",
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "step": "project-menu",
+      "name": "Esc 关闭作品菜单",
+      "status": "fail",
+      "detail": {
+        "menuAfterEsc": 1
+      }
+    },
+    {
+      "step": "project-menu",
+      "name": "点击其他区域/导航后作品菜单关闭",
+      "status": "pass",
+      "detail": {
+        "menuAfterNav": 0
+      }
+    },
+    {
+      "step": "wizard-title-sync",
+      "name": "步骤 3 完成态显示的标题与方案标题一致",
+      "status": "fail",
+      "detail": {
+        "propTitle": "自定义书名甲",
+        "createdText": "《潮汐表上没有的名字》已创建。你可以直接开写，也可以先调整大纲。",
+        "hint": "初稿、人物档案和伏笔台账已经准备好。"
+      }
+    },
+    {
+      "step": "wizard-race",
+      "name": "loading 中关闭后重开：仍是干净的步骤 1",
+      "status": "pass",
+      "detail": {
+        "step": "01",
+        "loadingHidden": false,
+        "proposalHidden": true
+      }
+    },
+    {
+      "step": "studio-misc",
+      "name": "「替换选中」未选中时给出提示",
+      "status": "pass"
+    },
+    {
+      "step": "studio-misc",
+      "name": "「更克制」给出提示",
+      "status": "pass"
+    },
+    {
+      "step": "studio-misc",
+      "name": "新建章节章号应为第 10 章（现有 9 章）",
+      "status": "fail",
+      "detail": {
+        "no": "第6章",
+        "vol": "第一卷 · 潮声",
+        "treeNo": "6",
+        "title": "雨夜的访客",
+        "volumeHeaders": [
+          "第一卷 · 潮声3 章",
+          "第二卷 · 暗流3 章",
+          "第一卷 · 潮声3 章"
+        ],
+        "items": 6
+      }
+    },
+    {
+      "step": "studio-misc",
+      "name": "新建章节卷号应与相邻章一致（第二卷）",
+      "status": "fail",
+      "detail": {
+        "vol": "第一卷 · 潮声"
+      }
+    },
+    {
+      "step": "studio-misc",
+      "name": "新建章节标题应为未命名章节",
+      "status": "fail",
+      "detail": {
+        "title": "雨夜的访客"
+      }
+    },
+    {
+      "step": "console",
+      "name": "控制台无 error",
+      "status": "pass",
+      "detail": {
+        "errors": []
+      }
+    }
+  ],
+  "console": []
+}
