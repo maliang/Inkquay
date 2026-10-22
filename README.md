@@ -49,14 +49,14 @@ Logo 为矢量 SVG：`software/public/logo.svg`，桌面图标也由它生成。
 
 GitHub 仓库：[maliang/Inkquay](https://github.com/maliang/Inkquay)
 
-- 推送到 `main` 自动触发 [Release Inkquay](.github/workflows/release.yml)，最新已发布 [v0.1.7](https://github.com/maliang/Inkquay/releases/latest)
+- 推送到 `main` 自动触发 [Release Inkquay](.github/workflows/release.yml)，自动发布到 [GitHub Releases](https://github.com/maliang/Inkquay/releases/latest)
 - 版本号：`0.1.<GitHub Run Number>`，自动生成 DMG + ZIP + `latest-mac.yml`
 - 产物发布到 GitHub Releases；首次安装从 Releases 下载
 - 应用启动后会检查更新，之后每 4 小时检查一次
 - 发现新版本弹窗：点「更新并重启」→ 自动下载 → 下载完成自动重启安装
 - macOS 菜单「检查更新…」可手动检查
 - 开发版不检查更新
-- 已验证：打包版启动 8 秒后检测到 v0.1.7；点击「更新并重启」会进入自动下载/安装流程
+- 已验证：打包版启动 8 秒后检测到 GitHub 最新版；点击「更新并重启」会进入自动下载/安装流程
 
 > macOS 的 Squirrel 自动更新要求 App 被签名。GitHub Actions 默认构建未签名版本（可通过 Release 手动安装）；要启用真正的自动升级，请在仓库 Secrets 配置 `CSC_LINK` / `CSC_KEY_PASSWORD`，并在需要时补 notarization。配置后 workflow 会自动签名；未签名版本的下载失败会回退到打开 Releases 下载页。
 

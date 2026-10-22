@@ -41,7 +41,7 @@ desktop/
 - 发现新版本用原生弹窗提示；点「更新并重启」后自动下载并重启安装
 - macOS 菜单「检查更新…」可手动触发
 - 开发版本不检查更新
-- 已验证自动检查：启动 8 秒后检测到 GitHub 最新版 v0.1.7
+- 已验证自动检查：启动 8 秒后检测到 GitHub 最新版
 - 自动更新要求签名；正式发布请在 GitHub Secrets 配 `CSC_LINK`、`CSC_KEY_PASSWORD` 并做 notarization
 - 未签名构建会提示更新，但安装可能失败，此时会自动打开 Releases 下载页作为回退
 

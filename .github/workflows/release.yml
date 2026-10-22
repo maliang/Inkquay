@@ -3,6 +3,11 @@ name: Release Inkquay
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'README.md'
+      - 'desktop/README.md'
+      - 'software/screenshots/**'
+      - 'prototype/**'
   workflow_dispatch:
 
 permissions:
