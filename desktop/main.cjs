@@ -132,7 +132,6 @@ function setupAutoUpdates() {
   if (!app.isPackaged) return;
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
-  autoUpdater.on('update-available', (info) => { void promptForUpdate(info); });
   autoUpdater.on('download-progress', (progress) => {
     writeLog(`update downloading ${Math.round(progress.percent || 0)}%`);
   });
@@ -140,7 +139,29 @@ function setupAutoUpdates() {
     writeLog('update downloaded, restarting');
     if (updateRequested) autoUpdater.quitAndInstall();
   });
-  autoUpdater.on('error', (error) => writeLog(`updater error: ${error.message}`));
+  autoUpdater.on('checking-for-update', () => writeLog('checking for updates'));
+  autoUpdater.on('update-available', (info) => {
+    writeLog(`update available: ${info.version}`);
+    void promptForUpdate(info);
+  });
+  autoUpdater.on('update-not-available', () => writeLog('no update available'));
+  autoUpdater.on('error', (error) => {
+    writeLog(`updater error: ${error.message}`);
+    if (updateRequested && mainWindow) {
+      updateRequested = false;
+      void dialog.showMessageBox(mainWindow, {
+        type: 'warning',
+        title: '自动更新未完成',
+        message: '新版本下载或安装失败',
+        detail: '当前构建可能没有完成签名/公证。可以打开 GitHub Releases 手动安装最新版。',
+        buttons: ['打开下载页', '稍后'],
+        defaultId: 0,
+        cancelId: 1,
+      }).then(({ response }) => {
+        if (response === 0) void shell.openExternal('https://github.com/maliang/Inkquay/releases/latest');
+      });
+    }
+  });
   setTimeout(() => { void checkForUpdates(false); }, 8000);
   setInterval(() => { void checkForUpdates(false); }, 4 * 60 * 60 * 1000);
 }
