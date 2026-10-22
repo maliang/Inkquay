@@ -36,8 +36,11 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install app dependencies
+        run: pnpm -C software install --frozen-lockfile
 
       - name: Set release version
         id: version
