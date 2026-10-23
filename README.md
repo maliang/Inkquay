@@ -50,6 +50,7 @@ Logo 为矢量 SVG：`software/public/logo.svg`，桌面图标也由它生成。
 GitHub 仓库：[maliang/Inkquay](https://github.com/maliang/Inkquay)
 
 - 推送到 `main` 自动触发 [Release Inkquay](.github/workflows/release.yml)，自动发布到 [GitHub Releases](https://github.com/maliang/Inkquay/releases/latest)
+- 平台矩阵：macOS universal、Windows x64 NSIS、Linux x64 AppImage + deb
 - 版本号：`0.1.<GitHub Run Number>`，自动生成 DMG + ZIP + `latest-mac.yml`
 - 产物发布到 GitHub Releases；首次安装从 Releases 下载
 - 应用启动后会检查更新，之后每 4 小时检查一次
@@ -60,14 +61,17 @@ GitHub 仓库：[maliang/Inkquay](https://github.com/maliang/Inkquay)
 
 > macOS 的 Squirrel 自动更新要求 App 被签名。GitHub Actions 默认构建未签名版本（可通过 Release 手动安装）；要启用真正的自动升级，请在仓库 Secrets 配置 `CSC_LINK` / `CSC_KEY_PASSWORD`，并在需要时补 notarization。配置后 workflow 会自动签名；未签名版本的下载失败会回退到打开 Releases 下载页。
 
-## 桌面版（macOS）
+## 桌面版（macOS / Windows / Linux）
 
 已经打包成独立 `.app` 和 `.dmg`，不需要用户安装 Node：
 
 ```bash
 pnpm desktop         # 直接启动桌面版
-pnpm desktop:pack    # 生成 desktop/release/mac-arm64/Inkquay.app
-pnpm desktop:dmg     # 生成 desktop/release/Inkquay-0.1.0-arm64.dmg
+pnpm desktop:pack    # 本机架构 .app
+pnpm desktop:dmg     # 本机架构 .dmg
+
+# 多平台发布由 GitHub Actions 矩阵完成
+# macOS universal / Windows x64 NSIS / Linux x64 AppImage + deb
 ```
 
 ![桌面版](software/screenshots/91-desktop-studio.png)
@@ -75,7 +79,10 @@ pnpm desktop:dmg     # 生成 desktop/release/Inkquay-0.1.0-arm64.dmg
 - 数据：`~/Library/Application Support/Inkquay/data/studio.db`
 - 日志：`~/Library/Application Support/Inkquay/logs/server.log`
 - 已实测：启动、编辑、关闭、重启后内容保留
-- 当前只构建 macOS arm64；未做签名 / notarization，首次打开可能需右键 → 打开
+- GitHub Release 覆盖 macOS universal、Windows x64、Linux x64；未签名版本首次打开可能需右键/绕过 SmartScreen
+- macOS 自动更新：`.zip` + `latest-mac.yml`
+- Windows 自动更新：NSIS + `latest.yml`
+- Linux 自动更新：AppImage + `latest-linux.yml`；deb 仅手动安装
 - 详细说明：[desktop/README.md](desktop/README.md)
 
 ## 当前进度
@@ -98,7 +105,7 @@ pnpm desktop:dmg     # 生成 desktop/release/Inkquay-0.1.0-arm64.dmg
 - 个人资料：称呼 / 笔名、签名、头像首字，贯穿问候与导出署名
 - 四套主题、六种强调色、自定义颜色、字号与动效
 - Markdown / Word（.docx）导出
-- macOS 桌面版：独立 `.app` / `.dmg`，内置本地服务，不依赖系统 Node
+- 桌面版：独立 `.app/.dmg`、Windows NSIS、Linux AppImage/deb，内置本地服务，不依赖系统 Node
 - 隔离 SQLite 的 API 集成测试 + Playwright 浏览器 E2E + Electron 桌面 E2E
 - AI 企划先生成预览，支持逐项勾选/取消后再写入；失败不会丢作品
 
@@ -122,7 +129,7 @@ pnpm desktop:dmg     # 生成 desktop/release/Inkquay-0.1.0-arm64.dmg
 | --- |
 | ![选区改写](software/screenshots/101-selection-toolbar.png) |
 
-| 分镜板 | macOS 桌面版 |
+| 分镜板 | 桌面版 |
 | --- | --- |
 | ![分镜板](software/screenshots/85-storyboard-live.png) | ![桌面版](software/screenshots/91-desktop-studio.png) |
 
@@ -137,7 +144,7 @@ pnpm desktop:dmg     # 生成 desktop/release/Inkquay-0.1.0-arm64.dmg
 │   ├── data/                 SQLite / 本地密钥（运行时生成）
 │   ├── public/logo.svg       矢量 Logo
 │   └── scripts/              API 测试 / UI E2E
-├── desktop/                  # Electron 桌面壳（macOS .app/.dmg）
+├── desktop/                  # Electron 桌面壳（macOS / Windows / Linux）
 ├── prototype/                # 早期静态界面原型（归档）
 └── package.json              # 根入口 / 桌面打包脚本
 ```
@@ -166,7 +173,8 @@ pnpm desktop:test  # 启动 Electron，验证编辑 → 关闭 → 重启后数�
 - 暂无账号系统、多用户、云同步；称呼和 API 只是本地设置
 - AI 企划已支持逐项确认，章节版本可对比回退
 - 还没有跨章节的版本总览与分支版本
-- 桌面版当前只构建 macOS arm64，未签名 / notarization
+- macOS 默认未签名/未公证；Windows 默认未签名，Linux 默认未签名
+- Linux 自动更新只对 AppImage 生效，deb 需要手动升级
 - 静态原型已归档，但还没有正式删除
 
 更详细的工程说明见 [software/README.md](software/README.md)。

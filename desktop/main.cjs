@@ -7,6 +7,7 @@ const net = require('node:net');
 const path = require('node:path');
 
 app.setName('Inkquay');
+if (process.platform === 'win32') app.setAppUserModelId('com.inkquay.writer');
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -216,6 +217,12 @@ function buildMenu() {
     label: '窗口',
     submenu: [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'close' }],
   });
+  if (process.platform !== 'darwin') {
+    template.push({
+      label: '帮助',
+      submenu: [{ label: '检查更新…', click: () => { void checkForUpdates(true); } }],
+    });
+  }
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 

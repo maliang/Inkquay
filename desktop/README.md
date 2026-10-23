@@ -1,4 +1,4 @@
-# Inkquay · 私家写手 · macOS 桌面版
+# Inkquay · 私家写手 · 桌面版
 
 Electron 外壳 + 内置本地写作服务，数据完全保存在本机。
 
@@ -7,8 +7,8 @@ Electron 外壳 + 内置本地写作服务，数据完全保存在本机。
 ```bash
 cd ..
 pnpm desktop         # 直接启动桌面版（开发态）
-pnpm desktop:pack    # 生成 .app：desktop/release/mac-arm64/Inkquay.app
-pnpm desktop:dmg     # 生成 DMG：desktop/release/Inkquay-0.1.0-arm64.dmg
+pnpm desktop:pack    # 本机架构 .app
+pnpm desktop:dmg     # 本机架构 .dmg
 ```
 
 ## 结构
@@ -31,7 +31,7 @@ desktop/
 - 开发态启动、作品库加载
 - 打包后的 `.app` 启动、页面渲染
 - 编辑正文 → 关闭 → 重新打开，内容保留
-- DMG 构建成功（115MB，macOS arm64）
+- 多平台 Release：macOS universal、Windows x64 NSIS、Linux x64 AppImage + deb
 - `pnpm desktop:test` 自动验证：启动 → 编辑 → 关闭 → 重启 → 内容保留
 
 ## 自动更新
@@ -39,7 +39,7 @@ desktop/
 - 主分支推送由 GitHub Actions 发布 DMG/ZIP 和 `latest-mac.yml`
 - 应用启动后 8 秒检查一次，之后每 4 小时检查
 - 发现新版本用原生弹窗提示；点「更新并重启」后自动下载并重启安装
-- macOS 菜单「检查更新…」可手动触发
+- macOS 菜单「检查更新…」可手动触发；Windows/Linux 在「帮助」菜单
 - 开发版本不检查更新
 - 已验证自动检查：启动 8 秒后检测到 GitHub 最新版
 - 自动更新要求签名；正式发布请在 GitHub Secrets 配 `CSC_LINK`、`CSC_KEY_PASSWORD` 并做 notarization
@@ -47,7 +47,5 @@ desktop/
 
 ## 限制
 
-- 当前只构建了 macOS arm64
 - 未做代码签名 / notarization；首次打开可能需要右键 → 打开，或执行：
   `xattr -dr com.apple.quarantine "/Applications/Inkquay.app"`
-- Windows / Linux 需要补对应 electron-builder target 和图标

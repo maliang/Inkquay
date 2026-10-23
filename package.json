@@ -58,18 +58,8 @@
       "category": "public.app-category.productivity",
       "icon": "desktop/build/icon.icns",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "arm64"
-          ]
-        }
+        "dmg",
+        "zip"
       ]
     },
     "artifactName": "Inkquay-${version}-${arch}.${ext}",
@@ -80,7 +70,48 @@
         "repo": "Inkquay",
         "releaseType": "release"
       }
-    ]
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "desktop/build/icon.ico",
+      "artifactName": "Inkquay-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Inkquay",
+      "deleteAppDataOnUninstall": false
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "desktop/build/icon.png",
+      "category": "Office",
+      "executableName": "inkquay",
+      "maintainer": "maliang <maliang47@foxmail.com>"
+    }
   },
   "author": "马良",
   "dependencies": {
