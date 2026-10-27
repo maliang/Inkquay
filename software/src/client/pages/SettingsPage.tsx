@@ -44,7 +44,7 @@ export function SettingsPage() {
   const [providerKey, setProviderKey] = useState('');
   const [providerBase, setProviderBase] = useState('');
   const [providerModels, setProviderModels] = useState<string[]>([]);
-  const [providerDefault, setProviderDefault] = useState('');
+  const [providerDefaultChoice, setProviderDefaultChoice] = useState('');
   const [testState, setTestState] = useState<{ kind: 'idle' | 'loading' | 'ok' | 'error'; message: string }>({ kind: 'idle', message: '未测试' });
   const saveTimer = useRef<number | null>(null);
 
@@ -112,7 +112,9 @@ export function SettingsPage() {
       const { providers: nextProviders } = await api.providers();
       if (settings.defaultModel?.providerId === provider.id && provider.enabled) {
         const fallback = nextProviders.find((p) => p.enabled && p.configured && p.enabledModels[0]);
+        // 停用的正是当前默认供应商：有可用备选就切过去，没有就明确回到「未配置」，不留悬空默认。
         if (fallback) await updateSettings({ defaultModel: { providerId: fallback.id, modelId: fallback.enabledModels[0] } });
+        else await updateSettings({ defaultModel: null });
       }
       await reload();
       toast(`${provider.name} ${provider.enabled ? '已停用' : '已启用'}`);
@@ -127,7 +129,7 @@ export function SettingsPage() {
     setProviderKey('');
     setProviderBase(provider.baseUrl);
     setProviderModels([...provider.enabledModels]);
-    setProviderDefault(provider.defaultModel || provider.enabledModels[0] || provider.models[0]?.id || '');
+    setProviderDefaultChoice(settings.defaultModel?.providerId === provider.id ? settings.defaultModel.modelId : '');
     setTestState({ kind: 'idle', message: '未测试' });
   }
 
@@ -145,8 +147,19 @@ export function SettingsPage() {
         baseUrl: providerBase,
         ...(providerKey.trim() ? { apiKey: providerKey.trim() } : {}),
       });
-      if (providerEnabled && result.provider.configured && settings.defaultModel?.providerId === editing.id) {
-        await updateSettings({ defaultModel: { providerId: editing.id, modelId: providerDefault } });
+      // 只在「用户明确选了」或「当前默认失效」两条路径写默认模型，其他情况一律不动。
+      const saved = result.provider;
+      const isCurrent = settings.defaultModel?.providerId === saved.id;
+      const allowed = saved.enabledModels;
+      if (!saved.enabled || !saved.configured) {
+        if (isCurrent) await updateSettings({ defaultModel: null });
+      } else if (providerDefaultChoice && allowed.includes(providerDefaultChoice)) {
+        if (!isCurrent || settings.defaultModel?.modelId !== providerDefaultChoice) {
+          await updateSettings({ defaultModel: { providerId: saved.id, modelId: providerDefaultChoice } });
+        }
+      } else if (isCurrent) {
+        const nextModel = allowed[0];
+        await updateSettings({ defaultModel: nextModel ? { providerId: saved.id, modelId: nextModel } : null });
       }
       await reload();
       setEditing(null);
@@ -180,7 +193,7 @@ export function SettingsPage() {
       setProviderKey('');
       setProviderBase(provider.baseUrl);
       setProviderModels([]);
-      setProviderDefault(provider.models[0]?.id || '');
+      setProviderDefaultChoice('');
     } catch (err) {
       toast(err instanceof Error ? err.message : '创建供应商失败', 'warn');
     }
@@ -325,6 +338,11 @@ export function SettingsPage() {
               <div className="connection-row"><button className="btn btn--ghost" type="button" onClick={testProvider} disabled={testState.kind === 'loading'}><Icon name="plug" /> {testState.kind === 'loading' ? '检查中…' : '检查连接'}</button><span className={`connection-status${testState.kind === 'ok' ? ' is-ok' : testState.kind === 'error' ? ' is-error' : ''}`}><i />{testState.message}</span></div>
               <div className="provider-models-head"><div><h4>可用模型</h4><p>勾选后可在写作台切换。</p></div></div>
               <div className="provider-model-list">{editing.models.map((model) => { const enabled = providerModels.includes(model.id); return <label className={`provider-model-item${enabled ? ' is-enabled' : ''}`} key={model.id}><input type="checkbox" checked={enabled} onChange={() => setProviderModels((prev) => enabled ? prev.filter((id) => id !== model.id) : [...prev, model.id])} /><span className="provider-model-item__body"><strong>{model.name}</strong><span>{model.ctx} 上下文</span></span><span className="provider-model-item__tags">{model.tags.map((tag) => <span key={tag}>{tag}</span>)}</span></label>; })}</div>
+              <div className="provider-models-head provider-models-head--default"><div><h4>默认模型</h4><p>可以稍后在写作台顶部切换。</p></div></div>
+              <select className="text-input provider-default-select" value={providerModels.includes(providerDefaultChoice) ? providerDefaultChoice : ''} onChange={(e) => setProviderDefaultChoice(e.target.value)} disabled={!providerEnabled}>
+                <option value="">不设为默认</option>
+                {providerModels.map((id) => { const model = editing.models.find((m) => m.id === id); return <option key={id} value={id}>{model?.name || id}</option>; })}
+              </select>
             </div>
             <footer className="provider-dialog__foot"><span className="modal__hint">保存后立即生效。</span><div className="modal__foot-actions"><button className="btn btn--ghost" type="button" onClick={() => setEditing(null)}>取消</button><button className="btn btn--primary" type="button" onClick={saveProvider}><Icon name="check" /> 保存配置</button></div></footer>
           </div>

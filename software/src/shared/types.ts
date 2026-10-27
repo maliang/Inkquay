@@ -83,6 +83,10 @@ export interface ProjectSummary {
   totalWords: number;
   goalWords: number;
   chapterCount: number;
+  /** 剧本场次数（小说恒为 0）：作品库卡片/英雄卡用它替代「0 章」 */
+  sceneCount: number;
+  /** 剧本分镜数（小说恒为 0） */
+  shotCount: number;
   updatedAt: string;
 }
 

@@ -157,6 +157,15 @@ export function OutlinePage() {
     </div>
   );
   const written = project.chapters.filter((c) => c.content).length;
+  const acts = project.outline.acts;
+  const actNumerals = acts.map((_, i) => ['I', 'II', 'III', 'IV', 'V'][i] || String(i + 1));
+  const currentActId = selected?.actId || acts[0]?.id || '';
+  const chapterSpans = acts.map((act) => {
+    const numbers = project.outline.beats.filter((b) => b.actId === act.id).map((b) => b.chapterNo).sort((a, b) => a - b);
+    return { act, first: numbers[0] ?? null, last: numbers[numbers.length - 1] ?? null };
+  });
+  const maxChapter = Math.max(1, ...project.outline.beats.map((b) => b.chapterNo));
+  const chapterToX = (chapter: number) => Math.min(812, Math.max(8, ((chapter - 1) / maxChapter) * 820));
   const topbar = (
     <>
       <div className="topbar-left"><Link className="tb-crumb__back" to={`/project/${project.id}`}><Icon name="arrow-left" /></Link><div className="tb-project"><Cover project={project} variant="mini" /><div className="tb-project__info"><div className="tb-project__title">{project.title}<span className="tb-tag">{typeLabel[project.type]}</span></div><span className="tb-project__meta">{project.genre}</span></div></div></div>
@@ -169,15 +178,15 @@ export function OutlinePage() {
       <div className="panel-project"><Cover project={project} variant="mini" /><div className="panel-project__info"><strong>{project.title}</strong><span>{project.outline.acts.length} 幕 · {project.outline.beats.length} 个场景</span></div><Link className="icon-btn icon-btn--sm" to={`/project/${project.id}`}><Icon name="chevron-down" /></Link></div>
       <div className="panel-scroll">
         <div className="panel-section-head"><span>结构</span><span className="panel-hint">已完成 {written}</span></div>
-        <div className="structure-card"><div className="structure-card__icon"><Icon name="route" /></div><div><strong>三幕式</strong><span>{project.outline.beats.length} 个场景 · 目标 {Math.round(project.goalWords / 10000)} 万字</span></div><Icon name="check" className="structure-card__check" /></div>
+        <div className="structure-card"><div className="structure-card__icon"><Icon name="route" /></div><div><strong>{acts.length === 3 ? '三幕式' : `${acts.length} 幕结构`}</strong><span>{acts.length} 幕 · {project.outline.beats.length} 个场景 · 目标 {Math.round(project.goalWords / 10000)} 万字</span></div><Icon name="check" className="structure-card__check" /></div>
         <div className="act-list">
-          {project.outline.acts.map((act, i) => {
+          {acts.map((act, i) => {
             const beats = project.outline.beats.filter((b) => b.actId === act.id);
             const done = beats.filter((b) => b.status === '初稿' || b.status === '已定稿').length;
-            return <div key={act.id} className={`act-item${i === 1 ? ' is-active' : ''}`}><span className="act-item__no">{['I', 'II', 'III'][i] || i + 1}</span><span className="act-item__body"><strong>{act.title}</strong><em>{beats[0]?.chapterNo ? `第 ${beats[0].chapterNo}–${beats[beats.length - 1]?.chapterNo} 章` : act.summary}</em></span><span className="act-item__status">{done}/{beats.length}</span></div>;
+            return <div key={act.id} className={`act-item${currentActId === act.id ? ' is-active' : ''}`}><span className="act-item__no">{actNumerals[i]}</span><span className="act-item__body"><strong>{act.title}</strong><em>{beats[0]?.chapterNo ? `第 ${beats[0].chapterNo}–${beats[beats.length - 1]?.chapterNo} 章` : act.summary}</em></span><span className="act-item__status">{done}/{beats.length}</span></div>;
           })}
         </div>
-        <div className="panel-section-head panel-section-head--spaced"><span>人物弧光</span><span className="panel-hint">数据来自设定库</span></div>
+        <div className="panel-section-head panel-section-head--spaced"><span>人物弧光 <span className="tag tag--hint">示意</span></span><span className="panel-hint">弧线是界面示意，不来自正文</span></div>
         <div className="arc-list">
           {project.characters.slice(0, 3).map((c, i) => (
             <div key={c.id} className="arc-row"><div className="arc-row__top"><span>{c.name}</span><em>{c.role.split('·')[0]}</em></div><div className={`arc-track${i === 1 ? ' arc-track--jade' : i === 2 ? ' arc-track--gold' : ''}`}><i style={{ width: `${[64, 47, 78][i]}%` }} /><b style={{ left: `${[38, 24, 55][i]}%` }} /></div></div>
@@ -191,20 +200,20 @@ export function OutlinePage() {
     <AppShell active="outline" projectId={project.id} topbar={topbar} panel={panel}>
       <section className="view view--outline is-active">
         <div className="outline-view">
-          <header className="view-head"><div><p className="eyebrow"><span className="eyebrow__dot" />故事结构 · 三幕式</p><h1>{project.outline.acts.length} 幕，{project.outline.beats.length} 个场景</h1><p className="view-sub">{project.description}</p></div><div className="view-actions"><Link className="btn btn--primary" to={`/project/${project.id}`}><Icon name="pen" /> 回到正文</Link></div></header>
+          <header className="view-head"><div><p className="eyebrow"><span className="eyebrow__dot" />故事结构 · {acts.length} 幕</p><h1>{acts.length} 幕，{project.outline.beats.length} 个场景</h1><p className="view-sub">{project.description}</p></div><div className="view-actions"><Link className="btn btn--primary" to={`/project/${project.id}`}><Icon name="pen" /> 回到正文</Link></div></header>
           <section className="tension-grid">
             <div className="tension-card">
-              <div className="tension-card__head"><div><h2>情绪张力曲线</h2><p>按章节场景数量与状态估算</p></div><div className="legend"><span><i />张力</span><span><i className="is-act" />幕间转折</span></div></div>
+              <div className="tension-card__head"><div><h2>情绪张力曲线 <span className="tag tag--hint">示意</span></h2><p>示意图：曲线不按正文计算，分幕位置与章节区间来自真实场景数据</p></div><div className="legend"><span><i />张力</span><span><i className="is-act" />幕间转折</span></div></div>
               <div className="tension-chart">
-                <div className="chart-y"><span>9</span><span>7</span><span>5</span><span>3</span></div>
+                <div className="chart-y"><span>高</span><span>中</span><span>低</span></div>
                 <svg viewBox="0 0 820 220" preserveAspectRatio="none">
                   <defs><linearGradient id="tf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--accent)" stopOpacity=".25" /><stop offset="100%" stopColor="var(--accent)" stopOpacity="0" /></linearGradient><linearGradient id="ts" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="var(--gold)" /><stop offset="55%" stopColor="var(--accent)" /><stop offset="100%" stopColor="var(--accent-hi)" /></linearGradient></defs>
                   <g className="chart-grid"><line x1="0" y1="40" x2="820" y2="40" /><line x1="0" y1="90" x2="820" y2="90" /><line x1="0" y1="140" x2="820" y2="140" /><line x1="0" y1="190" x2="820" y2="190" /></g>
-                  <rect x="340" y="0" width="10" height="220" className="chart-act" /><rect x="680" y="0" width="10" height="220" className="chart-act" />
+                  <g className="chart-acts">{chapterSpans.map(({ act, first }, i) => (i > 0 && first ? <rect key={act.id} x={chapterToX(first)} y="0" width="6" height="220" className="chart-act" /> : null))}</g>
                   <path d="M0,168 C60,158 90,132 140,138 S240,102 300,112 S400,70 470,82 S570,48 650,58 S760,26 820,30 L820,220 L0,220 Z" fill="url(#tf)" />
                   <path d="M0,168 C60,158 90,132 140,138 S240,102 300,112 S400,70 470,82 S570,48 650,58 S760,26 820,30" fill="none" stroke="url(#ts)" strokeWidth="2" strokeLinecap="round" />
                   <g className="chart-points">{[[90, 138], [180, 120], [300, 112], [430, 88], [560, 60], [690, 48], [790, 34]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r={i === 2 ? 6 : 3.5} className={i === 2 ? 'is-active' : ''} />)}</g>
-                  <g className="chart-labels"><text x="8" y="212">第 1 章</text><text x="292" y="212">第 7 章</text><text x="500" y="212">第 12 章</text><text x="660" y="212">第 18 章</text><text x="784" y="212">第 24 章</text></g>
+                  <g className="chart-labels">{chapterSpans.map(({ act, first, last }) => (first && last ? <text key={act.id} x={Math.max(4, chapterToX((first + last) / 2) - 22)} y="212">第 {first}–{last} 章</text> : null))}</g>
                 </svg>
                 {selected && <div className="chart-tooltip" style={{ left: '34%', top: '5%' }}><span>第 {selected.chapterNo} 章 · {selected.title}</span><strong>{selected.status}</strong><em>{selected.summary}</em></div>}
               </div>
@@ -230,8 +239,8 @@ export function OutlinePage() {
           <div className="acts-head"><h2>分幕大纲 <span className="acts-head__hint">拖动卡片可排序</span></h2><div className="acts-head__tools"><button className="chip" type="button" onClick={addBeat}><Icon name="plus" /> 添加场景</button></div></div>
           <div className="acts">
             {grouped.map(({ act, beats }, actIndex) => (
-              <article key={act.id} className={`act${actIndex === 1 ? ' act--current' : ''}`}>
-                <header className="act__head"><div className="act__no">{['I', 'II', 'III'][actIndex] || actIndex + 1}</div><div className="act__title"><h3>{act.title}</h3><p>{act.summary}</p></div><span className="act__count">{beats.filter((b) => b.status === '初稿' || b.status === '已定稿').length} / {beats.length}</span></header>
+              <article key={act.id} className={`act${currentActId === act.id ? ' act--current' : ''}`}>
+                <header className="act__head"><div className="act__no">{actNumerals[actIndex]}</div><div className="act__title"><h3>{act.title}</h3><p>{act.summary}</p></div><span className="act__count">{beats.filter((b) => b.status === '初稿' || b.status === '已定稿').length} / {beats.length}</span></header>
                 <div className="beats">
                   {beats.map((beat) => (
                     <button

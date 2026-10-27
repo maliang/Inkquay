@@ -20,7 +20,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     },
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error((data as any)?.error || `请求失败（${response.status}）`);
+  if (!response.ok) {
+    // 保留人话错误信息，同时带上状态码，方便调用方区分「404 已经不存在」和瞬时失败。
+    const error = new Error((data as any)?.error || `请求失败（${response.status}）`) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+  }
   return data as T;
 }
 

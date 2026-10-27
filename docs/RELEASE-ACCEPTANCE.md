@@ -33,7 +33,9 @@ PROVIDER_SMOKE_REQUIRED=1 DEEPSEEK_API_KEY=... pnpm test:providers
 
 - Linux：Xvfb 下运行 `pnpm desktop:test`；
 - Windows：原生 runner 运行 `pnpm desktop:test`；
-- 覆盖引导、新建作品、编辑、原生关窗落盘、重启持久化。
+- 覆盖引导、新建作品、编辑、原生关窗落盘、重启持久化；并断言非写作台页面（`/settings`）关窗 < 2500ms、写作台关窗 < 4000ms。
+
+> **第二轮 F-1 已关闭**：`pnpm desktop:test` 现在自带这两条耗时断言（基线设置页约 5150ms，现约 260ms）。断言失败说明 5 秒兜底被错误引入，按缺陷处理，而不是放宽阈值。
 
 本地 macOS 可先跑：
 
@@ -57,4 +59,5 @@ pnpm desktop:dmg    # 需要签名/公证时才适合分发
 - 所有已配置供应商冒烟 PASS；
 - Linux/Windows 两个 job 至少各绿一次；
 - `pnpm typecheck`、`pnpm test`、`pnpm test:ui`、`pnpm desktop:test` 全绿；
+- 第二轮 F-1 已关闭的判定：`pnpm desktop:test` 输出含 `PASS T3 settings close <N>ms (<2500ms)` 且通过。
 - 记录失败供应商的 HTTP 状态、模型名与时间，不用「网络问题」一句带过。

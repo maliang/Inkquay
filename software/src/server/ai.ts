@@ -5,11 +5,12 @@ import {
   getProviderRow,
   getProjectDetail,
   getSettings,
+  providerModelIds,
   saveMessage,
   deleteMessage,
 } from './repository.ts';
 import { decryptSecret } from './crypto.ts';
-import { countWords } from './utils.ts';
+import { AI_NO_DEFAULT_MODEL, AI_NO_MODEL_SELECTED, countWords } from './utils.ts';
 
 interface StreamOptions extends Omit<AiStreamRequest, 'modelId'> {
   modelId: string;
@@ -236,15 +237,28 @@ export async function streamAssistant(res: Response, opts: StreamOptions) {
   const project = getProjectDetail(opts.projectId);
   if (!project) throw new Error('作品不存在');
   const chapter = opts.chapterId ? project.chapters.find((c) => c.id === opts.chapterId) : null;
-  const providerId = opts.providerId || settings.defaultModel?.providerId || 'mock';
-  const modelId = opts.modelId || settings.defaultModel?.modelId || 'mock-writer';
+  // 模型解析与校验：任何一步失败都在 saveMessage 之前抛出 → 零副作用（不写 ai_messages、不动正文）。
+  // 只有「显式指定了供应商或模型」时才允许覆盖默认；只给一半也不借用另一半，避免 provider/model 错配。
+  const explicitProviderId = (opts.providerId || '').trim();
+  const explicitModelId = (opts.modelId || '').trim();
+  const hasOverride = Boolean(explicitProviderId || explicitModelId);
+  const fallback = settings.defaultModel;
+  const providerId = explicitProviderId || (hasOverride ? '' : fallback?.providerId || '');
+  const modelId = explicitModelId || (hasOverride ? '' : fallback?.modelId || '');
+  if (!providerId) throw new Error(AI_NO_DEFAULT_MODEL);
+  if (!modelId) throw new Error(AI_NO_MODEL_SELECTED);
+  const row = getProviderRow(providerId);
+  if (!row) throw new Error(`供应商「${providerId}」不存在，请到设置中重新选择`);
+  if (!row.enabled) throw new Error(`「${row.name}」未在此工作台启用，请到设置中开启`);
+  const allowedModels = providerModelIds(providerId);
+  if (allowedModels.length && !allowedModels.includes(modelId)) {
+    throw new Error(`模型 ${modelId} 不在「${row.name}」的可用列表里，请到设置中重新选择`);
+  }
   let partial = '';
   const streamOpts: StreamOptions = {
     ...opts, providerId, modelId,
     onDelta: (delta) => { partial += delta; },
   };
-  const row = getProviderRow(providerId);
-  if (!row) throw new Error('供应商不存在');
   const key = decryptSecret(row.api_key_enc);
   const useMock = row.kind === 'mock';
   if (!useMock && !key) throw new Error(`${row.name} 尚未配置 API Key，请先到设置中填写`);

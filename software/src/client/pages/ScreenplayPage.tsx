@@ -162,6 +162,8 @@ export function ScreenplayPage() {
       {loadError ? <><strong>打不开剧本工坊</strong><p>{loadError}</p><Link className="btn btn--ghost btn--sm" to="/">返回书房</Link></> : <p>正在打开剧本工坊…</p>}
     </div>
   );
+  const writtenScenes = project.scenes.filter((scene) => scene.content.trim()).length;
+  const sceneProgress = project.scenes.length ? Math.round((writtenScenes / project.scenes.length) * 100) : 0;
   const topbar = (
     <>
       <div className="topbar-left"><Link className="tb-crumb__back" to="/"><Icon name="arrow-left" /></Link><div className="tb-project"><Cover project={project} variant="mini" /><div className="tb-project__info"><div className="tb-project__title">{project.title}<span className="tb-tag">{typeLabel[project.type]}</span></div><span className="tb-project__meta">{project.genre}</span></div></div></div>
@@ -190,7 +192,7 @@ export function ScreenplayPage() {
           ))}
         </div>
       </div>
-      <div className="panel-foot"><div className="goal-mini"><span>剧本进度</span><strong>{project.scenes.length} <em>场戏</em></strong><span className="goal-mini__pct">{project.status}</span></div><div className="pbar pbar--jade"><i style={{ width: '38%' }} /></div><div className="screenplay-hint"><Icon name="film" /> {project.shots.length} 个分镜已保存</div></div>
+      <div className="panel-foot"><div className="goal-mini"><span>剧本进度</span><strong>{writtenScenes} / {project.scenes.length} <em>场有正文</em></strong><span className="goal-mini__pct">{project.status}</span></div><div className="pbar pbar--jade"><i style={{ width: `${sceneProgress}%` }} /></div><div className="screenplay-hint"><Icon name="film" /> {project.shots.length} 个分镜已保存</div></div>
     </>
   );
 
@@ -199,7 +201,7 @@ export function ScreenplayPage() {
       <section className="view view--screenplay is-active">
         <div className="screenplay">
           <div className="script-stage">
-            <div className="script-modebar"><div className="segmented"><button className={mode === 'script' ? 'is-active' : ''} type="button" onClick={() => setMode('script')}><Icon name="type" /> 剧本正文</button><button className={mode === 'boards' ? 'is-active' : ''} type="button" onClick={() => setMode('boards')}><Icon name="grid" /> 分镜板</button></div><div className="script-modebar__meta"><span>场 {active?.number || '—'} · 共 {project.scenes.length} 场</span><button className="btn btn--tiny btn--ghost" type="button"><Icon name="clock" /> 约 {Math.max(1, project.scenes.length * 3)} 分钟</button></div></div>
+            <div className="script-modebar"><div className="segmented"><button className={mode === 'script' ? 'is-active' : ''} type="button" onClick={() => setMode('script')}><Icon name="type" /> 剧本正文</button><button className={mode === 'boards' ? 'is-active' : ''} type="button" onClick={() => setMode('boards')}><Icon name="grid" /> 分镜板</button></div><div className="script-modebar__meta"><span>场 {active?.number || '—'} · 共 {project.scenes.length} 场</span><button className="btn btn--tiny btn--ghost" type="button" title="按每场 3 分钟粗略估算，不是正文计时"><Icon name="clock" /> 估算 {Math.max(1, project.scenes.length * 3)} 分钟</button></div></div>
             {mode === 'script' ? (
               <div className="script-pane is-active">
                 {active ? (
@@ -238,11 +240,12 @@ export function ScreenplayPage() {
             )}
           </div>
           <aside className="script-inspector">
-            <div className="script-inspector__head"><span>本场分析</span><span className="tag tag--accent">本地</span></div>
+            <div className="script-inspector__head"><span>本场分析</span><span className="tag tag--hint">示意</span></div>
             <h3>{active ? `场 ${active.number} · ${active.place}` : '未选择场次'}</h3>
+            <p className="script-inspector__note">下面的评分与描述是界面示意，不来自本场正文分析，也不代表全书质量。</p>
             <div className="score-row"><div className="score"><strong>4.5</strong><span>张力</span></div><div className="score"><strong>4.0</strong><span>节奏</span></div><div className="score"><strong>3.5</strong><span>信息</span></div></div>
-            <div className="script-inspector__section"><h4>本场功能</h4><p>让观众先于人物感到不安，把“早已沉没”的事实变成可见的证据。</p></div>
-            <div className="script-inspector__section"><h4>潜台词</h4><p>人物说出口的每一句话，都在回避真正的问题。</p></div>
+            <div className="script-inspector__section"><h4>本场功能 · 示例</h4><p>让观众先于人物感到不安，把“早已沉没”的事实变成可见的证据。</p></div>
+            <div className="script-inspector__section"><h4>潜台词 · 示例</h4><p>人物说出口的每一句话，都在回避真正的问题。</p></div>
             <div className="script-inspector__section"><h4>人物在场</h4><div className="scene-cast">{project.characters.slice(0, 2).map((c) => <span key={c.id}><i className={`char-avatar char-avatar--${c.id.replace('char_', '')} char-avatar--xs`}>{c.avatar || c.name.slice(0, 1)}</i>{c.name}</span>)}</div></div>
             <div className="ai-tip ai-tip--panel"><Icon name="spark" /><p>本场已保存 {sceneShots.length} 个分镜镜头。分镜编辑会写回 SQLite。</p></div>
             <div className="inspector__actions"><button className="btn btn--ghost" type="button" onClick={() => active && openEditor(active)}><Icon name="pen" /> 编辑本场</button><button className="btn btn--ghost" type="button" onClick={generateShots}><Icon name="film" /> {sceneShots.length ? '查看分镜' : '生成分镜'}</button></div>

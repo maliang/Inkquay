@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { Chapter, ChapterVersion, ChatMessage, ProjectDetail, ProjectPlan, ProviderInfo } from '../../shared/types';
 import { api, streamChat } from '../api';
 import { AppShell } from '../components/AppShell';
@@ -9,6 +9,7 @@ import { PlanReviewModal } from '../components/PlanReviewModal';
 import { Cover } from '../components/Cover';
 import { Icon } from '../components/Icon';
 import { useApp } from '../context/AppContext';
+import { registerCloseGuard } from '../lib/closeGuard';
 import { useToast } from '../components/Toast';
 
 const typeLabel: Record<string, string> = { novel: '长篇小说', short: '短篇小说', screenplay: '电影剧本', series: '剧集大纲' };
@@ -29,6 +30,7 @@ function modelLabel(provider: ProviderInfo | undefined, modelId: string | undefi
 export function StudioPage() {
   const { projectId = '' } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { settings, providers, rememberProject, updateSettings } = useApp();
   const { toast } = useToast();
   const [project, setProject] = useState<ProjectDetail | null>(null);
@@ -73,7 +75,7 @@ export function StudioPage() {
 
   const activeChapter = useMemo(() => project?.chapters.find((c) => c.id === activeId) || null, [project, activeId]);
   const currentProvider = providers.find((p) => p.id === settings.defaultModel?.providerId);
-  const currentModel = modelLabel(currentProvider, settings.defaultModel?.modelId);
+  const currentModel = settings.defaultModel ? modelLabel(currentProvider, settings.defaultModel.modelId) : '未配置模型';
   const words = countWords(content);
 
   useEffect(() => {
@@ -87,11 +89,18 @@ export function StudioPage() {
     setMessages([]);
     setVersions([]);
     setSaveState('saved');
+    setExportScope('book');
     activeRef.current = { id: '', title: '', content: '' };
     lastSnapshotContentRef.current = '';
     api.project(projectId)
       .then(({ project: next }) => {
         if (!alive) return;
+        // 摘要可能过期（刚导入/刚改类型）：剧本绝不能落进章节写作台，兜底跳剧本页。
+        // 必须在 rememberProject 之前，否则「上次打开的作品」会被写成剧本 id。
+        if (next.type === 'screenplay') {
+          navigate(`/project/${next.id}/screenplay`, { replace: true });
+          return;
+        }
         setProject(next);
         setLoadError('');
         rememberProject(next.id);
@@ -117,7 +126,7 @@ export function StudioPage() {
       })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [projectId, rememberProject, toast, loadNonce]);
+  }, [projectId, rememberProject, toast, loadNonce, navigate]);
 
   useEffect(() => {
     const flush = () => {
@@ -221,27 +230,18 @@ export function StudioPage() {
     }
   }, [refreshVersions, toast]);
 
-  useEffect(() => {
-    const bridge = window.inkquayDesktop;
-    if (!bridge) return;
-    const off = bridge.onCloseRequest(() => {
-      void (async () => {
-        try {
-          if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null; }
-          const ok = await saveNow();
-          if (ok) bridge.readyToClose();
-          else {
-            bridge.cancelClose();
-            toast('保存失败，窗口先不关闭，请重试', 'warn');
-          }
-        } catch {
-          bridge.cancelClose();
-          toast('保存失败，窗口先不关闭，请重试', 'warn');
-        }
-      })();
-    });
-    return off;
-  }, [saveNow]);
+  // 关窗守卫：这里只负责「先把稿子落盘」，ack 由 App 层唯一的监听统一做。
+  useEffect(() => registerCloseGuard(async () => {
+    if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null; }
+    try {
+      const ok = await saveNow();
+      if (!ok) toast('保存失败，窗口先不关闭，请重试', 'warn');
+      return ok;
+    } catch {
+      toast('保存失败，窗口先不关闭，请重试', 'warn');
+      return false;
+    }
+  }), [saveNow, toast]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -313,6 +313,11 @@ export function StudioPage() {
   async function sendPrompt(text = input, regenerate = false, onAssistantDone?: (id: string) => void, replaceMessageId?: string) {
     const prompt = text.trim();
     if (!prompt || streaming || !project) return;
+    // 服务端是唯一权威（会回 SSE error）；这里先兜住「点了没反应」的体验。
+    if (!settings.defaultModel) {
+      toast('还没有选择默认模型，请到设置中配置（右下角「管理供应商」）', 'warn');
+      return;
+    }
     setInput('');
     setStreaming(true);
     setStopped(false);
@@ -949,12 +954,12 @@ export function StudioPage() {
               <>
                 <div className="ai-body">
                   <div className="memory-card">
-                    <div className="memory-card__head"><span><Icon name="layers" /> 已启用记忆</span><span className="memory-card__tokens">{project.characters.length} 人物 · {project.chapters.length} 章</span></div>
+                    <div className="memory-card__head"><span><Icon name="layers" /> 写作上下文</span><span className="memory-card__tokens">{project.characters.length} 人物 · {project.chapters.length} 章</span></div>
                     <div className="memory-chips">
                       <span className="memory-chip"><Icon name="type" />本章正文</span>
                       {project.characters.slice(0, 2).map((c) => <span className="memory-chip" key={c.id}><Icon name="users" />{c.name}</span>)}
                       <span className="memory-chip"><Icon name="pin" />{project.title}</span>
-                      <span className="memory-chip"><Icon name="flag" />伏笔 {project.foreshadows.length}</span>
+                      <span className="memory-chip"><Icon name="flag" />伏笔 {project.foreshadows.length} · 手动引用</span>
                     </div>
                   </div>
                   <div className="chat" ref={chatRef}>
@@ -1013,7 +1018,7 @@ export function StudioPage() {
                       <button className="send-btn" type="button" onClick={() => { if (streaming) stopStreaming(); else void sendPrompt(); }} aria-label={streaming ? '停止' : '发送'}><Icon name={streaming ? 'x' : 'arrow-up'} /></button>
                     </div>
                   </div>
-                  <div className="composer-hint"><span>⌘ ↵ 发送</span><span>由 {currentProvider?.name || '当前模型'} 提供</span></div>
+                  <div className="composer-hint"><span>⌘ ↵ 发送</span><span>{settings.defaultModel ? `由 ${currentProvider?.name || '当前模型'} 提供` : '默认模型还没配置'}</span></div>
                 </div>
               </>
             ) : aiTab === 'check' ? (

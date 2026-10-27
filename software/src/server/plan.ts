@@ -1,6 +1,7 @@
 import type { ProjectDetail, ProjectPlan, PlannedAct, PlannedCharacter } from '../shared/types.ts';
 import { decryptSecret } from './crypto.ts';
 import { getProviderRow, getSettings } from './repository.ts';
+import { AI_NO_DEFAULT_MODEL } from './utils.ts';
 
 function endpoint(baseUrl: string, path: string): string {
   const base = baseUrl.replace(/\/+$/, '');
@@ -126,7 +127,7 @@ async function callGoogle(provider: any, key: string, model: string, system: str
 export async function generateProjectPlan(project: ProjectDetail): Promise<ProjectPlan> {
   const settings = getSettings();
   const modelRef = settings.defaultModel;
-  if (!modelRef) throw new Error('还没有选择默认模型，请到设置中配置');
+  if (!modelRef) throw new Error(AI_NO_DEFAULT_MODEL);
   const provider = getProviderRow(modelRef.providerId);
   if (!provider) throw new Error('默认模型对应的供应商不存在');
   if (provider.kind === 'mock') return mockPlan(project);

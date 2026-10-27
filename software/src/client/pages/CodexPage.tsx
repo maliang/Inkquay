@@ -153,7 +153,7 @@ export function CodexPage() {
           <button className="codex-nav__item is-active" type="button" onClick={() => setTab('characters')}><Icon name="users" /><span>人物</span><em>{project.characters.length}</em></button>
           <button className="codex-nav__item" type="button" onClick={() => setTab('foreshadow')}><Icon name="flag" /><span>伏笔</span><em>{project.foreshadows.length}</em></button>
         </div>
-        <div className="memory-index"><div className="memory-index__head"><span><Icon name="spark" /> 长期记忆</span><span className="sync-dot">已同步</span></div><p>人物、秘密与关系已经进入 AI 的写作上下文。</p><div className="pbar"><i style={{ width: '72%' }} /></div><span className="memory-index__meta">{project.characters.length} 人物 · {project.foreshadows.length} 条伏笔</span></div>
+        <div className="memory-index"><div className="memory-index__head"><span><Icon name="spark" /> 设定索引</span><span className="sync-dot">本地保存</span></div><p>人物、秘密与关系保存在本地，写作时可在共笔面板引用。</p><span className="memory-index__meta">{project.characters.length} 人物 · {project.foreshadows.length} 条伏笔</span></div>
       </div>
       <div className="panel-foot panel-foot--note"><Icon name="clock" /><p>最近更新：{project.title} · 本地设定库</p></div>
     </>
@@ -162,7 +162,7 @@ export function CodexPage() {
     <AppShell active="codex" projectId={project.id} topbar={topbar} panel={panel}>
       <section className="view view--codex is-active">
         <div className="codex-view">
-          <header className="view-head"><div><p className="eyebrow"><span className="eyebrow__dot" />故事设定库</p><h1>人物与{project.title}</h1><p className="view-sub">AI 已索引 {project.characters.length} 位人物、{project.foreshadows.length} 条伏笔，写作时会自动引用。</p></div><div className="view-actions"><Link className="btn btn--ghost" to={`/project/${project.id}/outline`}><Icon name="map" /> 查看大纲</Link><Link className="btn btn--primary" to={`/project/${project.id}`}><Icon name="pen" /> 去写作</Link></div></header>
+          <header className="view-head"><div><p className="eyebrow"><span className="eyebrow__dot" />故事设定库</p><h1>人物与{project.title}</h1><p className="view-sub">已记录 {project.characters.length} 位人物、{project.foreshadows.length} 条伏笔；写作时可在共笔面板手动引用。</p></div><div className="view-actions"><Link className="btn btn--ghost" to={`/project/${project.id}/outline`}><Icon name="map" /> 查看大纲</Link><Link className="btn btn--primary" to={`/project/${project.id}`}><Icon name="pen" /> 去写作</Link></div></header>
           <div className="codex-tabs"><button className={tab === 'characters' ? 'is-active' : ''} type="button" onClick={() => setTab('characters')}>人物 <span>{project.characters.length}</span></button><button className={tab === 'foreshadow' ? 'is-active' : ''} type="button" onClick={() => setTab('foreshadow')}>伏笔 <span>{project.foreshadows.length}</span></button></div>
           <div className={`codex-body${tab === 'foreshadow' ? ' is-wide' : ''}`}>
             <div className="codex-content">
@@ -181,7 +181,7 @@ export function CodexPage() {
                 </div>
               ) : (
                 <div className="foreshadow-wrap">
-                  <div className="foreshadow-head"><div><strong>伏笔台账</strong><p>AI 会追踪埋设与回收之间的距离，避免遗忘。</p></div><div className="settings-block__actions"><button className="btn btn--tiny btn--ghost" type="button" onClick={() => openForeshadow()}><Icon name="plus" /> 新增伏笔</button><span className="tag tag--accent">{project.foreshadows.length} 条进行中</span></div></div>
+                  <div className="foreshadow-head"><div><strong>伏笔台账</strong><p>记录埋设位置与计划回收位置，写作时可在共笔面板手动引用。</p></div><div className="settings-block__actions"><button className="btn btn--tiny btn--ghost" type="button" onClick={() => openForeshadow()}><Icon name="plus" /> 新增伏笔</button><span className="tag tag--accent">{project.foreshadows.length} 条进行中</span></div></div>
                   <div className="foreshadow-table">
                     <div className="foreshadow-row foreshadow-row--head"><span>伏笔</span><span>埋设</span><span>计划回收</span><span>状态</span></div>
                     {project.foreshadows.map((f) => <div key={f.id} className="foreshadow-row foreshadow-row--clickable" role="button" tabIndex={0} onClick={() => openForeshadow(f)} onKeyDown={(e) => { if (e.key === 'Enter') openForeshadow(f); }}><span><Icon name="flag" />{f.name}</span><span>{f.planted}</span><span>{f.payoff}</span><span className={`foreshadow-status ${f.status === '已回收' ? 'is-done' : f.status === '规划中' ? 'is-plan' : 'is-pending'}`}>{f.status}</span></div>)}
@@ -191,10 +191,10 @@ export function CodexPage() {
             </div>
             {tab === 'characters' && selected && (
               <aside className="inspector">
-                <div className="inspector__head"><span>人物档案</span><span className="sync-badge"><Icon name="check" /> 已同步</span></div>
+                <div className="inspector__head"><span>人物档案</span><span className="sync-badge"><Icon name="check" /> 本地</span></div>
                 <div className="inspector__hero"><div className={`char-avatar char-avatar--${selected.id.replace('char_', '')} char-avatar--lg`}>{selected.avatar || selected.name.slice(0, 1)}</div><div><h2>{selected.name}</h2><p>{selected.role}</p><div className="char-tags">{selected.tags.map((t) => <span key={t}>{t}</span>)}</div></div></div>
                 <blockquote className="inspector__quote">{selected.quote}</blockquote>
-                <dl className="inspector__fields"><div><dt>年龄</dt><dd>{selected.age}</dd></div><div><dt>出场</dt><dd>{project.chapters.length} 章</dd></div><div><dt>视角</dt><dd>主视角</dd></div></dl>
+                <dl className="inspector__fields"><div><dt>年龄</dt><dd>{selected.age}</dd></div><div><dt>全书</dt><dd>{project.chapters.length} 章</dd></div><div><dt>视角</dt><dd>主视角</dd></div></dl>
                 <div className="inspector__section"><h4>动机与底色</h4><p>{selected.description}</p></div>
                 <div className="inspector__section"><h4>人物秘密 <Icon name="lock" /></h4><p className="inspector__secret">{selected.secret}</p></div>
                 <div className="inspector__section"><h4>关系</h4><div className="rel-list">{selected.relations.map((r) => <div className="rel-row" key={r.name}><span className="char-avatar char-avatar--xs">{r.name.slice(0, 1)}</span><div><strong>{r.name}</strong><em>{r.rel}</em></div><span className="rel-tension">{r.tension}</span></div>)}</div></div>
@@ -216,7 +216,7 @@ export function CodexPage() {
               <div className="form-block"><label className="form-label">动机与底色</label><textarea className="text-input text-input--area" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
               <div className="form-block"><label className="form-label">人物秘密</label><textarea className="text-input text-input--area" rows={2} value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} /></div>
             </div>
-            <footer className="modal__foot"><span className="modal__hint">人物会进入 AI 写作上下文。</span><div className="modal__foot-actions">{editing !== 'new' ? <button className="btn btn--ghost insight-form__danger" type="button" onClick={() => void removeCharacter(editing)}><Icon name="trash" /> 删除</button> : null}<button className="btn btn--ghost" type="button" onClick={() => setEditing(null)}>取消</button><button className="btn btn--primary" type="button" disabled={saving} onClick={saveCharacter}>{saving ? '保存中…' : '保存人物'}</button></div></footer>
+            <footer className="modal__foot"><span className="modal__hint">人物设定保存在本地，写作时可引用。</span><div className="modal__foot-actions">{editing !== 'new' ? <button className="btn btn--ghost insight-form__danger" type="button" onClick={() => void removeCharacter(editing)}><Icon name="trash" /> 删除</button> : null}<button className="btn btn--ghost" type="button" onClick={() => setEditing(null)}>取消</button><button className="btn btn--primary" type="button" disabled={saving} onClick={saveCharacter}>{saving ? '保存中…' : '保存人物'}</button></div></footer>
           </div>
         </div>
       )}
@@ -229,7 +229,7 @@ export function CodexPage() {
               <div className="form-row"><div className="form-block"><label className="form-label">埋设位置</label><input className="text-input" value={foreshadowForm.planted} onChange={(e) => setForeshadowForm({ ...foreshadowForm, planted: e.target.value })} placeholder="第 7 章" /></div><div className="form-block"><label className="form-label">计划回收</label><input className="text-input" value={foreshadowForm.payoff} onChange={(e) => setForeshadowForm({ ...foreshadowForm, payoff: e.target.value })} placeholder="第 14 章" /></div></div>
               <div className="form-block"><label className="form-label">状态</label><select className="text-input" value={foreshadowForm.status} onChange={(e) => setForeshadowForm({ ...foreshadowForm, status: e.target.value })}><option>待回收</option><option>规划中</option><option>已回收</option><option>已放弃</option></select></div>
             </div>
-            <footer className="modal__foot"><span className="modal__hint">伏笔会进入 AI 上下文，帮助模型避免遗忘。</span><div className="modal__foot-actions">{editingForeshadow !== 'new' ? <button className="btn btn--ghost insight-form__danger" type="button" onClick={() => void removeForeshadow(editingForeshadow)}><Icon name="trash" /> 删除</button> : null}<button className="btn btn--ghost" type="button" onClick={() => setEditingForeshadow(null)}>取消</button><button className="btn btn--primary" type="button" onClick={saveForeshadow}>保存伏笔</button></div></footer>
+            <footer className="modal__foot"><span className="modal__hint">伏笔保存在设定里，写作时可手动引用。</span><div className="modal__foot-actions">{editingForeshadow !== 'new' ? <button className="btn btn--ghost insight-form__danger" type="button" onClick={() => void removeForeshadow(editingForeshadow)}><Icon name="trash" /> 删除</button> : null}<button className="btn btn--ghost" type="button" onClick={() => setEditingForeshadow(null)}>取消</button><button className="btn btn--primary" type="button" onClick={saveForeshadow}>保存伏笔</button></div></footer>
           </div>
         </div>
       )}

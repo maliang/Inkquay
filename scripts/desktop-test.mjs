@@ -59,11 +59,15 @@ try {
   await first.window.keyboard.type('关窗也落盘');
   // 模拟用户点窗口关闭按钮；Playwright 的 app.close()/window.close()
   // 会直接结束进程，绕过 BrowserWindow 的 close 事件与 flush 握手。
+  // 写作台注册了 closeGuard，落盘完成即 ack，正常应在几百毫秒内退出；
+  // 超时收紧到 4000ms（原 8000ms 会把 desktop/main.cjs 的 5000ms 兜底掩盖成「通过」）。
+  const studioCloseStartedAt = Date.now();
   await first.app.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].close(); });
   await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Electron 关窗后进程未退出')), 8000);
+    const timer = setTimeout(() => reject(new Error('Electron 关窗后进程未退出（>4000ms）')), 4000);
     first.app.process().once('exit', () => { clearTimeout(timer); resolve(); });
   });
+  console.log(`PASS studio dirty close ${Date.now() - studioCloseStartedAt}ms (<4000ms)`);
 
   second = await launch();
   const port = new URL(second.window.url()).port;
@@ -73,6 +77,23 @@ try {
   assert.ok(text.includes('桌面版持久化'), 'desktop data persists across restarts');
   assert.ok(text.includes('关窗也落盘'), 'closing immediately after typing still flushes the draft');
   assert.equal(await second.window.locator('.onboarding').count(), 0, 'onboarding is not shown again');
+
+  // T3：非写作台（设置页）关窗不得再等 desktop/main.cjs 的 5000ms 兜底。
+  // 历史缺陷：onCloseRequest 只在 StudioPage 注册，其余路由只能等兜底 → 每次都卡满 5 秒。
+  // 现在监听挂在 App 根上（无 guard 也立即 ack），所以断言 < 2500ms；基线在同一断言下应为红（≈5160ms）。
+  await second.window.goto(`http://127.0.0.1:${port}/settings`);
+  await second.window.waitForSelector('.settings-route', { timeout: 15000 });
+  assert.ok(second.window.url().endsWith('/settings'), 'settings route is loaded before closing');
+  const settingsCloseStartedAt = Date.now();
+  await second.app.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].close(); });
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('设置页关窗后进程未退出（>6000ms）')), 6000);
+    second.app.process().once('exit', () => { clearTimeout(timer); resolve(); });
+  });
+  const settingsCloseMs = Date.now() - settingsCloseStartedAt;
+  assert.ok(settingsCloseMs < 2500, `settings 页关窗不得等 5s 兜底：实际 ${settingsCloseMs}ms，要求 <2500ms`);
+  console.log(`PASS T3 settings close ${settingsCloseMs}ms (<2500ms)`);
+
   console.log('Desktop E2E passed.');
 } catch (error) {
   console.error('Desktop E2E failed:', error);

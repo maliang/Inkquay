@@ -32,9 +32,10 @@ desktop/
 - 打包后的 `.app` 启动、页面渲染
 - 编辑正文 → 关闭 → 重新打开，内容保留
 - 关窗时渲染层先通过 preload/IPC 落盘，主进程收到确认后才真正关闭；保存失败会取消关闭
+- 关窗监听在渲染层只有一处（`software/src/client/App.tsx`，配合 `src/client/lib/closeGuard.ts`）：设置 / 大纲 / 设定等非写作台页面立即 ack 退出（实测 273ms，旧实现固定等满 5 秒兜底、实测 5164ms），只有写作台先落盘
 - 若渲染层 5 秒内无响应，主进程兜底退出（极端卡死时优先保证能关机）
 - 多平台 Release：macOS universal、Windows x64 NSIS、Linux x64 AppImage + deb
-- `pnpm desktop:test` 自动验证：启动 → 编辑 → 打字后立即关窗 → 重启 → 内容保留
+- `pnpm desktop:test` 自动验证：启动 → 编辑 → 打字后立即关窗 → 重启 → 内容保留；并断言非写作台页面（`/settings`）关窗 < 2500ms、写作台关窗 < 4000ms
 
 ## 自动更新
 

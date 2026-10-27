@@ -1435,3 +1435,122 @@ html[data-theme="paper"] .onboarding-preview {
 .trash-item__body strong { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
 .trash-item__body span { display: block; margin-top: 3px; font-size: 11px; color: var(--muted); }
 .trash-item__actions { display: flex; gap: 6px; flex: none; }
+
+/* 删除作品的二次确认：先看清删什么，再打书名（A2） */
+.danger-body { padding-top: 4px; }
+.danger-confirm {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--accent-line);
+  border-radius: 10px;
+  background: var(--accent-soft);
+}
+.danger-confirm__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-hi);
+}
+.danger-confirm__title .icon { width: 14px; height: 14px; }
+.danger-confirm__note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.danger-confirm ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.danger-confirm ul li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 11px;
+  color: var(--ink);
+}
+.danger-confirm ul li b { font-variant-numeric: tabular-nums; color: var(--accent-hi); }
+.danger-confirm__gate { display: grid; gap: 6px; font-size: 11px; color: var(--ink); }
+.danger-confirm__gate b { color: var(--accent-hi); }
+.danger-confirm__actions { display: flex; justify-content: flex-end; }
+.danger-confirm .btn--danger {
+  background: var(--accent-hi);
+  border-color: var(--accent-hi);
+  color: var(--paper);
+}
+.danger-confirm .btn--danger:hover:not(:disabled) { background: var(--accent-deep); border-color: var(--accent-deep); color: var(--paper); }
+.danger-confirm .btn--danger:disabled { opacity: .45; }
+.btn--tiny { padding: 2px 8px; font-size: 10px; }
+.provider-default-select { margin-top: 4px; }
+
+/* ---- t10: 示意标记与真实计数 ---- */
+.tag--hint {
+  border-style: dashed;
+  border-color: var(--line-strong);
+  background: transparent;
+  color: var(--dim);
+  font-weight: 400;
+}
+.continue-card__aside .screenplay-badge {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 14px 18px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  text-align: center;
+}
+.screenplay-badge__label {
+  font-size: 9px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.screenplay-badge strong {
+  font-family: var(--serif);
+  font-size: 27px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.screenplay-badge strong span {
+  font-size: 13px;
+  color: var(--muted);
+  margin-left: 1px;
+}
+.screenplay-badge em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--muted);
+}
+.screenplay-badge p {
+  margin: 0;
+  font-size: 9.5px;
+  color: var(--dim);
+}
+.project-card__progress--note > span {
+  font-family: var(--sans);
+  font-size: 9.5px;
+  letter-spacing: 0.2px;
+}
+.script-inspector__note {
+  margin: 0 0 10px;
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--dim);
+  border-left: 2px dashed var(--line-strong);
+  padding-left: 8px;
+}

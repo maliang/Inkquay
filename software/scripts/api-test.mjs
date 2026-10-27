@@ -173,6 +173,65 @@ async function main() {
   assert.equal(shot.shot.description, '测试分镜画面');
   console.log('PASS screenplay scene + storyboard');
 
+  // T1：剧本导出（题库里原本只覆盖小说的 md/docx，剧本走 scenes 分支但没人验证过）
+  const sceneTwo = await json(`/api/projects/${screenplay.project.id}/scenes`, {
+    method: 'POST',
+    body: JSON.stringify({ number: '2', heading: '2. 外景 · 测试街道 · 夜', content: '夜雨。人物站在街灯下。' }),
+  });
+  assert.equal(sceneTwo.scene.number, '2', 'second scene created');
+  const screenplayDetail = await json(`/api/projects/${screenplay.project.id}`);
+  assert.equal(screenplayDetail.project.scenes.length, 2);
+  assert.equal(screenplayDetail.project.sceneCount, 2, 'ProjectSummary.sceneCount reflects scenes');
+  assert.equal(screenplayDetail.project.shotCount, 6, 'ProjectSummary.shotCount reflects shots');
+  assert.equal(screenplayDetail.project.chapterCount, 0, 'screenplay still has no chapters');
+  const screenplayList = await json('/api/projects');
+  const listedScreenplay = screenplayList.projects.find((p) => p.id === screenplay.project.id);
+  assert.equal(listedScreenplay.sceneCount, 2, 'project list carries sceneCount');
+  assert.equal(listedScreenplay.shotCount, 6, 'project list carries shotCount');
+  const listedNovel = screenplayList.projects.find((p) => p.id === projectId);
+  assert.equal(listedNovel.sceneCount, 0, 'novel sceneCount is 0 (not undefined/NaN)');
+  assert.equal(listedNovel.shotCount, 0, 'novel shotCount is 0 (not undefined/NaN)');
+
+  const screenplayMd = await fetch(`${base}/api/projects/${screenplay.project.id}/export`);
+  assert.equal(screenplayMd.status, 200, 'screenplay markdown export is allowed');
+  const screenplayMarkdown = await screenplayMd.text();
+  assert.ok(screenplayMarkdown.includes('## 1. 内景 · 未命名场景 · 日'), 'export uses scene heading of scene 1');
+  assert.ok(screenplayMarkdown.includes('## 2. 外景 · 测试街道 · 夜'), 'export uses scene heading of scene 2');
+  assert.ok(screenplayMarkdown.includes('内景 · 测试场景'), 'export keeps scene body');
+  const screenplayDocx = await fetch(`${base}/api/projects/${screenplay.project.id}/export.docx`);
+  assert.equal(screenplayDocx.status, 200, 'screenplay docx export is allowed');
+  const screenplayDocxBytes = new Uint8Array(await screenplayDocx.arrayBuffer());
+  assert.equal(screenplayDocxBytes[0], 0x50);
+  assert.equal(screenplayDocxBytes[1], 0x4b);
+  assert.ok(screenplayDocxBytes.byteLength > 1000, 'screenplay docx has real content');
+  const emptyScreenplay = await json('/api/projects', {
+    method: 'POST',
+    body: JSON.stringify({ title: '空剧本', type: 'screenplay' }),
+  });
+  const emptyScreenplayExport = await fetch(`${base}/api/projects/${emptyScreenplay.project.id}/export`);
+  assert.equal(emptyScreenplayExport.status, 400, 'empty screenplay export is rejected');
+  const emptyScreenplayBody = await emptyScreenplayExport.json();
+  assert.equal(emptyScreenplayBody.error, '这本还没有可导出的正文');
+  await json(`/api/projects/${emptyScreenplay.project.id}`, { method: 'DELETE' });
+  console.log('PASS T1 screenplay markdown + docx export (and empty screenplay guard)');
+
+  // T2（剧本部分）：项目包必须带走 scenes/shots，导入后计数一致
+  const screenplayBundleRes = await fetch(`${base}/api/projects/${screenplay.project.id}/bundle`);
+  assert.equal(screenplayBundleRes.status, 200);
+  const screenplayBundle = await screenplayBundleRes.json();
+  const importedScreenplay = await json('/api/projects/import', {
+    method: 'POST', body: JSON.stringify({ bundle: screenplayBundle }),
+  });
+  assert.equal(importedScreenplay.project.type, 'screenplay');
+  assert.equal(importedScreenplay.project.scenes.length, 2, 'screenplay bundle keeps both scenes');
+  assert.equal(importedScreenplay.project.shots.length, 6, 'screenplay bundle keeps shots');
+  assert.equal(importedScreenplay.project.sceneCount, 2);
+  assert.equal(importedScreenplay.project.shotCount, 6);
+  assert.ok(importedScreenplay.project.scenes.some((s) => s.heading === '2. 外景 · 测试街道 · 夜'));
+  assert.ok(importedScreenplay.project.shots.some((s) => s.description === '测试分镜画面'));
+  await json(`/api/projects/${importedScreenplay.project.id}`, { method: 'DELETE' });
+  console.log('PASS T2 screenplay bundle keeps scenes + shots');
+
   const deletedProject = await json(`/api/projects/${screenplay.project.id}`, { method: 'DELETE' });
   assert.equal(deletedProject.ok, true);
   const deletedLookup = await fetch(`${base}/api/projects/${screenplay.project.id}`);
@@ -238,6 +297,77 @@ async function main() {
   assert.ok(stopped.content.length > 0, 'aborted stream keeps the partial text');
   console.log('PASS abort keeps partial assistant text');
 
+  // T5 / A1-API：模型没配好时必须明确拒绝，不许静默回退演示模型并落库
+  const t5ChapterUrl = `/api/projects/${projectId}`;
+  const chapterBeforeT5 = (await json(t5ChapterUrl)).project.chapters.find((c) => c.id === chapterId);
+  const messagesBeforeT5 = (await json(`/api/projects/${projectId}/messages?chapterId=${chapterId}`)).messages.length;
+  const aiStream = async (body, options = {}) => fetch(`${base}/api/ai/stream`, {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId, chapterId, ...body }),
+  });
+
+  await json('/api/settings', { method: 'PUT', body: JSON.stringify({ defaultModel: null }) });
+  const noModelRes = await aiStream({ prompt: '没有默认模型时不该有正文。' });
+  assert.equal(noModelRes.status, 200, 'SSE keeps 200 for validation errors');
+  const noModelRaw = await noModelRes.text();
+  assert.ok(noModelRaw.includes('"type":"error"'), 'no default model -> SSE error event');
+  assert.ok(noModelRaw.includes('默认模型'), 'error tells the user to pick a default model');
+  assert.ok(!noModelRaw.includes('"type":"delta"'), 'no silent mock delta');
+  assert.ok(!noModelRaw.includes('"type":"done"'), 'no done event without a model');
+
+  await json('/api/settings', { method: 'PUT', body: JSON.stringify({ defaultModel: { providerId: 'ghost', modelId: 'ghost-1' } }) });
+  const ghostRaw = await (await aiStream({ prompt: '供应商不存在。' })).text();
+  assert.ok(ghostRaw.includes('"type":"error"') && ghostRaw.includes('不存在'), 'unknown provider is refused explicitly');
+  assert.ok(!ghostRaw.includes('"type":"delta"'));
+
+  await json('/api/providers/deepseek', { method: 'PATCH', body: JSON.stringify({ enabled: false }) });
+  await json('/api/settings', { method: 'PUT', body: JSON.stringify({ defaultModel: { providerId: 'deepseek', modelId: 'deepseek-chat' } }) });
+  const disabledRaw = await (await aiStream({ prompt: '供应商被停用了。' })).text();
+  assert.ok(disabledRaw.includes('"type":"error"'), 'disabled provider -> error');
+  assert.ok(disabledRaw.includes('未在此工作台启用'), 'disabled provider is named as disabled');
+  assert.ok(!disabledRaw.includes('"type":"delta"'));
+
+  await json('/api/providers/deepseek', { method: 'PATCH', body: JSON.stringify({ enabled: true }) });
+  await json('/api/settings', { method: 'PUT', body: JSON.stringify({ defaultModel: { providerId: 'deepseek', modelId: 'deepseek-reasoner' } }) });
+  const notAllowedRaw = await (await aiStream({ prompt: '模型不在可用列表。' })).text();
+  assert.ok(notAllowedRaw.includes('"type":"error"'), 'model outside enabledModels -> error');
+  assert.ok(notAllowedRaw.includes('可用列表'), 'error explains the model is not in the available list');
+  assert.ok(!notAllowedRaw.includes('"type":"delta"'));
+
+  const messagesAfterRefusals = (await json(`/api/projects/${projectId}/messages?chapterId=${chapterId}`)).messages.length;
+  assert.equal(messagesAfterRefusals, messagesBeforeT5, 'refusals persist no message at all');
+  const chapterAfterRefusals = (await json(t5ChapterUrl)).project.chapters.find((c) => c.id === chapterId);
+  assert.equal(chapterAfterRefusals.content, chapterBeforeT5.content, 'refusals leave chapter text untouched');
+  assert.equal(chapterAfterRefusals.words, chapterBeforeT5.words, 'refusals leave word count untouched');
+
+  // 修复不许误伤显式演示模型：ui-test / desktop-test 依赖 providerId=mock 的离线性
+  const explicitMockRes = await aiStream({ prompt: '显式演示模型仍然可用。', providerId: 'mock', modelId: 'mock-writer' });
+  assert.equal(explicitMockRes.status, 200);
+  const explicitMockRaw = await explicitMockRes.text();
+  assert.ok(explicitMockRaw.includes('"type":"delta"'), 'explicit mock still streams deltas');
+  assert.ok(explicitMockRaw.includes('"provider":"本地演示"'), 'explicit mock is served by 本地演示');
+  const messagesAfterExplicitMock = (await json(`/api/projects/${projectId}/messages?chapterId=${chapterId}`)).messages.length;
+  assert.equal(messagesAfterExplicitMock, messagesAfterRefusals + 2, 'explicit mock persists user + assistant messages');
+
+  // 只给一半（provider 有、model 空）时不许借用默认模型的另一半
+  const halfRaw = await (await aiStream({ prompt: '只给供应商。', providerId: 'mock', modelId: '' })).text();
+  assert.ok(halfRaw.includes('"type":"error"'), 'half override -> error');
+  assert.ok(halfRaw.includes('还没有选择模型'), 'half override asks for the missing model');
+  assert.ok(!halfRaw.includes('"type":"delta"'));
+  assert.equal(
+    (await json(`/api/projects/${projectId}/messages?chapterId=${chapterId}`)).messages.length,
+    messagesAfterExplicitMock,
+    'half override persists no message',
+  );
+
+  await json('/api/settings', { method: 'PUT', body: JSON.stringify({ defaultModel: { providerId: 'mock', modelId: 'mock-writer' } }) });
+  const restoredRaw = await (await aiStream({ prompt: '恢复默认模型后继续写作。' })).text();
+  assert.ok(restoredRaw.includes('"type":"delta"'), 'restored default model streams again');
+  assert.ok(restoredRaw.includes('"provider":"本地演示"'));
+  console.log('PASS T5 unconfigured model refuses instead of silently mocking');
+
   await json(`/api/chapters/${chapterId}`, {
     method: 'PATCH', body: JSON.stringify({ content: '这是一个导出测试。\n\n正文必须可读。' }),
   });
@@ -270,6 +400,23 @@ async function main() {
   assert.notEqual(imported.project.id, projectId);
   assert.equal(imported.project.title, 'API 测试作品');
   assert.ok(imported.project.chapters.some((chapter) => chapter.content.includes('导出测试')));
+  // T2（小说部分）：项目包必须带走全部集合，导入后计数与正文一致
+  const novelSource = await json(`/api/projects/${projectId}`);
+  const collectionCounts = (project) => ({
+    chapters: project.chapters.length,
+    scenes: project.scenes.length,
+    shots: project.shots.length,
+    characters: project.characters.length,
+    foreshadows: project.foreshadows.length,
+  });
+  const sourceCounts = collectionCounts(novelSource.project);
+  assert.ok(sourceCounts.chapters > 0 && sourceCounts.characters > 0 && sourceCounts.foreshadows > 0, 'bundle fixture is not empty');
+  assert.deepEqual(collectionCounts(imported.project), sourceCounts, 'imported project keeps every collection count');
+  assert.equal(imported.project.chapters[0].content, novelSource.project.chapters[0].content, 'imported chapter text is identical');
+  assert.equal(imported.project.chapters[0].title, novelSource.project.chapters[0].title, 'imported chapter titles are identical');
+  assert.equal(imported.project.foreshadows[0].name, novelSource.project.foreshadows[0].name, 'imported foreshadow names are identical');
+  assert.equal(imported.project.sceneCount, sourceCounts.scenes, 'imported sceneCount matches scenes');
+  assert.equal(imported.project.shotCount, sourceCounts.shots, 'imported shotCount matches shots');
   assert.ok(Array.isArray(bundle.project.versions) && bundle.project.versions.length > 0);
   const importedBundleRes = await fetch(`${base}/api/projects/${imported.project.id}/bundle`);
   const importedBundle = await importedBundleRes.json();

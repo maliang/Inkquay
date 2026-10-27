@@ -53,6 +53,8 @@ function projectSummary(row: Row): ProjectSummary {
     totalWords: Number(row.total_words || 0),
     goalWords: Number(row.goal_words || 300000),
     chapterCount: Number(row.chapter_count || 0),
+    sceneCount: Number(row.scene_count || 0),
+    shotCount: Number(row.shot_count || 0),
     updatedAt: row.updated_at,
   };
 }
@@ -147,9 +149,15 @@ function shotFromRow(row: Row): Shot {
   };
 }
 
+/** 作品摘要的计数列：列表与详情共用一份，避免两处 SQL 漂移。 */
+const SUMMARY_COUNTS = `
+    (SELECT COUNT(*) FROM chapters c WHERE c.project_id = p.id AND c.deleted_at IS NULL) AS chapter_count,
+    (SELECT COUNT(*) FROM scenes s WHERE s.project_id = p.id) AS scene_count,
+    (SELECT COUNT(*) FROM shots s WHERE s.project_id = p.id) AS shot_count`;
+
 export function listProjects(): ProjectSummary[] {
   const rows = db.prepare(`
-    SELECT p.*, (SELECT COUNT(*) FROM chapters c WHERE c.project_id = p.id AND c.deleted_at IS NULL) AS chapter_count
+    SELECT p.*, ${SUMMARY_COUNTS}
     FROM projects p
     ORDER BY p.updated_at DESC
   `).all() as Row[];
@@ -158,7 +166,7 @@ export function listProjects(): ProjectSummary[] {
 
 export function getProjectDetail(id: string): ProjectDetail | null {
   const row = db.prepare(`
-    SELECT p.*, (SELECT COUNT(*) FROM chapters c WHERE c.project_id = p.id AND c.deleted_at IS NULL) AS chapter_count
+    SELECT p.*, ${SUMMARY_COUNTS}
     FROM projects p WHERE p.id = ?
   `).get(id) as Row | undefined;
   if (!row) return null;
@@ -328,6 +336,17 @@ export function listProviders(): ProviderInfo[] {
 
 export function getProviderRow(id: string): Row | undefined {
   return db.prepare('SELECT * FROM providers WHERE id = ?').get(id) as Row | undefined;
+}
+
+/**
+ * 供应商当前可用的模型 id：勾选过 enabledModels 就以它为准，从未勾选过则回退到全量 models。
+ * 用于在发起 AI 请求前判断「模型是否真的在这个供应商里可用」，避免带错模型打到接口上。
+ */
+export function providerModelIds(id: string): string[] {
+  const row = getProviderRow(id);
+  if (!row) return [];
+  const enabled = parseJson<string[]>(row.enabled_models, []);
+  return enabled.length ? enabled : parseJson<ModelInfo[]>(row.models, []).map((m) => m.id);
 }
 
 export function getProviderSecret(id: string): string {

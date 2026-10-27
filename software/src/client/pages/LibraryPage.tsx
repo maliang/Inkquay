@@ -200,24 +200,42 @@ export function LibraryPage() {
                     <h2>{hero.title}</h2>
                     <p className="continue-card__desc">{hero.description}</p>
                     <div className="continue-card__chapter">
-                      <span>已写</span><strong>{hero.chapterCount} 章</strong><span className="muted">{formatNumber(hero.totalWords)} 字</span>
+                      <span>已写</span>
+                      {hero.type === 'screenplay'
+                        ? <><strong>{hero.sceneCount} 场</strong><span className="muted">{hero.shotCount} 个分镜</span></>
+                        : <><strong>{hero.chapterCount} 章</strong><span className="muted">{formatNumber(hero.totalWords)} 字</span></>}
                     </div>
                     <blockquote>“{hero.description || '这部作品还没有写简介，继续写下去，故事会自己长出来。'}”</blockquote>
                     <div className="continue-card__foot">
-                      <div className="progress-block">
-                        <div className="pbar pbar--wide"><i style={{ width: `${Math.max(1, Math.round((hero.totalWords / hero.goalWords) * 100))}%` }} /></div>
-                        <span>{formatNumber(hero.totalWords)} / {formatNumber(hero.goalWords)} 字</span>
-                      </div>
-                      <button className="btn btn--primary" type="button" onClick={() => navigate(`/project/${hero.id}`)}>
+                      {hero.type === 'screenplay' ? (
+                        <div className="progress-block"><span>共 {hero.sceneCount} 场 · {hero.shotCount} 个分镜</span></div>
+                      ) : (
+                        <div className="progress-block">
+                          <div className="pbar pbar--wide"><i style={{ width: `${Math.max(1, Math.round((hero.totalWords / hero.goalWords) * 100))}%` }} /></div>
+                          <span>{formatNumber(hero.totalWords)} / {formatNumber(hero.goalWords)} 字</span>
+                        </div>
+                      )}
+                      <button className="btn btn--primary" type="button" onClick={() => navigate(hero.type === 'screenplay' ? `/project/${hero.id}/screenplay` : `/project/${hero.id}`)}>
                         继续写作 <Icon name="arrow-right" />
                       </button>
                     </div>
                   </div>
                   <div className="continue-card__aside">
-                    <div className="progress-ring" style={{ '--progress': Math.max(1, Math.round((hero.totalWords / hero.goalWords) * 100)) } as CSSProperties}>
-                      <div><strong>{Math.max(1, Math.round((hero.totalWords / hero.goalWords) * 100))}<span>%</span></strong><em>全书进度</em></div>
-                    </div>
-                    <div className="continue-card__mini"><span><b>{hero.chapterCount}</b> 章</span><span><b>{formatNumber(hero.totalWords)}</b> 字</span></div>
+                    {hero.type === 'screenplay' ? (
+                      <div className="screenplay-badge">
+                        <span className="screenplay-badge__label">剧本</span>
+                        <strong>{hero.sceneCount}<span>场</span></strong>
+                        <em>{hero.shotCount} 个分镜</em>
+                        <p>按场推进，不折算字数进度</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="progress-ring" style={{ '--progress': Math.max(1, Math.round((hero.totalWords / hero.goalWords) * 100)) } as CSSProperties}>
+                          <div><strong>{Math.max(1, Math.round((hero.totalWords / hero.goalWords) * 100))}<span>%</span></strong><em>全书进度</em></div>
+                        </div>
+                        <div className="continue-card__mini"><span><b>{hero.chapterCount}</b> 章</span><span><b>{formatNumber(hero.totalWords)}</b> 字</span></div>
+                      </>
+                    )}
                     <span className="continue-card__hint">内容实时保存在本地数据库</span>
                   </div>
                 </section>
@@ -235,17 +253,19 @@ export function LibraryPage() {
                   </div>
                   <div className="project-grid">
                     {filtered.map((project) => {
-                      const progress = project.type === 'screenplay'
-                        ? Math.round((project.totalWords / Math.max(project.goalWords, 1)) * 100)
-                        : Math.max(1, Math.round((project.totalWords / Math.max(project.goalWords, 1)) * 100));
+                      const progress = Math.max(1, Math.round((project.totalWords / Math.max(project.goalWords, 1)) * 100));
                       return (
                         <article key={project.id} className="project-card" role="button" tabIndex={0} onClick={() => navigate(project.type === 'screenplay' ? `/project/${project.id}/screenplay` : `/project/${project.id}`)} onKeyDown={(e) => { if (e.key === 'Enter') navigate(project.type === 'screenplay' ? `/project/${project.id}/screenplay` : `/project/${project.id}`); }}>
                           <Cover project={project} />
                           <div className="project-card__body">
                             <div className="project-card__top"><h3>{project.title}</h3><span className={`tag${project.status === '连载中' ? ' tag--live' : ''}`}>{project.status}</span></div>
                             <p className="project-card__desc">{project.description}</p>
-                            <div className="project-card__meta"><span>{typeLabel[project.type]}</span><i /><span>{formatNumber(project.totalWords)} {project.type === 'screenplay' ? '页' : '字'}</span><i /><span>{project.type === 'screenplay' ? `${project.chapterCount} 场` : `${project.chapterCount} 章`}</span></div>
-                            <div className="project-card__progress"><div className={`pbar${project.type === 'screenplay' ? ' pbar--gold' : ''}`}><i style={{ width: `${Math.min(100, Math.max(1, progress))}%` }} /></div><span>{Math.min(100, Math.max(1, progress))}%</span></div>
+                            <div className="project-card__meta"><span>{typeLabel[project.type]}</span><i /><span>{formatNumber(project.totalWords)} 字</span><i /><span>{project.type === 'screenplay' ? `${project.sceneCount} 场 · ${project.shotCount} 个分镜` : `${project.chapterCount} 章`}</span></div>
+                            {project.type === 'screenplay' ? (
+                              <div className="project-card__progress project-card__progress--note"><span>剧本按场推进，不计字数进度</span></div>
+                            ) : (
+                              <div className="project-card__progress"><div className="pbar"><i style={{ width: `${Math.min(100, Math.max(1, progress))}%` }} /></div><span>{Math.min(100, Math.max(1, progress))}%</span></div>
+                            )}
                           </div>
                           <button className="icon-btn icon-btn--sm project-card__more" type="button" aria-label="作品设置" onClick={(e) => { e.stopPropagation(); setSettingsProject(project); }}><Icon name="more" /></button>
                         </article>
