@@ -1394,3 +1394,44 @@ html[data-theme="paper"] .onboarding-preview {
   font-size: 11px;
   line-height: 1.7;
 }
+
+/* 回收站与全书版本 */
+.version-scope {
+  display: inline-flex;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  align-self: flex-start;
+}
+.version-scope button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.version-scope button.is-active {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(31, 26, 20, .08);
+}
+.trash-modal { width: min(560px, calc(100vw - 32px)); }
+.trash-modal__count { color: var(--muted); font-size: .72em; font-weight: 500; }
+.trash-list { max-height: min(52vh, 460px); overflow: auto; padding: 4px 0 10px; }
+.trash-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.trash-item__body { min-width: 0; }
+.trash-item__body strong { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
+.trash-item__body span { display: block; margin-top: 3px; font-size: 11px; color: var(--muted); }
+.trash-item__actions { display: flex; gap: 6px; flex: none; }

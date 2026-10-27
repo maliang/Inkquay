@@ -251,7 +251,13 @@ async function main() {
   const docxBytes = new Uint8Array(await docxRes.arrayBuffer());
   assert.equal(docxBytes[0], 0x50);
   assert.equal(docxBytes[1], 0x4b);
-  console.log('PASS markdown + docx export');
+  const scopedMd = await fetch(`${base}/api/projects/${projectId}/export?chapterId=${chapterId}`);
+  assert.equal(scopedMd.status, 200);
+  assert.ok((await scopedMd.text()).includes('这是一个导出测试'));
+  const scopedDocx = await fetch(`${base}/api/projects/${projectId}/export.docx?chapterId=${chapterId}`);
+  assert.equal(scopedDocx.status, 200);
+  assert.ok((await scopedDocx.arrayBuffer()).byteLength > 1000);
+  console.log('PASS markdown + docx export (book + chapter)');
 
   const bundleRes = await fetch(`${base}/api/projects/${projectId}/bundle`);
   assert.equal(bundleRes.status, 200);
@@ -274,12 +280,27 @@ async function main() {
   const extra = await json(`/api/projects/${projectId}/chapters`, {
     method: 'POST', body: JSON.stringify({ title: '待删除章节' }),
   });
+  await json(`/api/chapters/${extra.chapter.id}/versions`, {
+    method: 'POST', body: JSON.stringify({ source: '测试快照' }),
+  });
   const deletedChapter = await json(`/api/chapters/${extra.chapter.id}`, { method: 'DELETE' });
   assert.equal(deletedChapter.ok, true);
   assert.ok(deletedChapter.versions >= 0);
   const afterDelete = await json(`/api/projects/${projectId}`);
   assert.ok(!afterDelete.project.chapters.some((chapter) => chapter.id === extra.chapter.id));
-  console.log('PASS chapter delete');
+  const trash = await json(`/api/projects/${projectId}/trash`);
+  assert.ok(trash.chapters.some((chapter) => chapter.id === extra.chapter.id), 'deleted chapter is in trash');
+  const restoredChapter = await json(`/api/chapters/${extra.chapter.id}/restore`, { method: 'POST' });
+  assert.equal(restoredChapter.ok, true);
+  assert.ok(restoredChapter.project.chapters.some((chapter) => chapter.id === extra.chapter.id), 'chapter restores from trash');
+  await json(`/api/chapters/${extra.chapter.id}`, { method: 'DELETE' });
+  const purged = await json(`/api/chapters/${extra.chapter.id}/purge`, { method: 'DELETE' });
+  assert.equal(purged.ok, true);
+  const trashAfterPurge = await json(`/api/projects/${projectId}/trash`);
+  assert.ok(!trashAfterPurge.chapters.some((chapter) => chapter.id === extra.chapter.id));
+  const allVersions = await json(`/api/projects/${projectId}/versions`);
+  assert.ok(Array.isArray(allVersions.versions));
+  console.log('PASS chapter trash + restore + purge + project version list');
 
   const emptyProject = await json('/api/projects', {
     method: 'POST', body: JSON.stringify({ title: '空作品' }),

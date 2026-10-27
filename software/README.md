@@ -4,7 +4,7 @@
 
 **Inkquay（私家写手）**：本地优先的 AI 长篇 / 短篇 / 剧本创作工作台。
 
-当前为 Milestone 11（稳定性与日常体验，方案 A）：作品库、写作台、真实 SQLite 持久化、自动保存与 ⌘S、关窗落盘握手、AI 流式共笔 / 停止保留半截 / 重新生成、章节版本、模型供应商管理、主题设置、大纲 / 人物 / 剧本 / 伏笔的创建编辑与排序、作品设置/归档/删除、分镜板、Markdown / Word 导出、项目 JSON 备份导入，以及 API 集成测试、浏览器 E2E 与 Electron 桌面 E2E。
+当前为 Milestone 12（长线写作与发布验收）：作品库、写作台、真实 SQLite 持久化、自动保存与 ⌘S、关窗落盘握手、AI 流式共笔 / 停止保留半截 / 重新生成、章节版本与全书历史、章节回收站、归档筛选、模型供应商管理、主题设置、大纲 / 人物 / 剧本 / 伏笔的创建编辑与排序、作品设置/删除、分镜板、全书/本章 Markdown / Word 导出、项目 JSON 备份导入，以及 API 集成测试、浏览器 E2E 与 Electron 桌面 E2E。
 
 > 根目录现在是全栈应用入口；早期静态原型归档在 `../prototype/`。本目录是实际软件工程。
 
@@ -78,9 +78,9 @@ pnpm desktop:pack
 - 新建作品（长篇 / 短篇 / 电影剧本 / 剧集）
 - 写作台：章节树、正文编辑、标题编辑、字数 / 阅读时长
 - 800ms 防抖自动保存；⌘S / Ctrl+S 立即保存；切章、关窗、刷新前都会先落盘
-- 新建 / 删除章节；删除明确提示历史版本一并删除
-- 导出作品为 Markdown（`/api/projects/:id/export`）
-- 导出 Word `.docx`（`/api/projects/:id/export.docx`）；空作品返回中文错误
+- 新建 / 删除章节；删除先移入回收站，可恢复；彻底删除前提示历史版本一并清除
+- 导出作品为 Markdown（`/api/projects/:id/export`，可选 `?chapterId=` 只导当前章）
+- 导出 Word `.docx`（`/api/projects/:id/export.docx`，同样支持 `chapterId`）；空作品/空章节返回中文错误
 - 项目 JSON 备份 / 导入（`/api/projects/:id/bundle`、`/api/projects/import`），含版本历史，不含 API Key
 
 ### AI 共笔
@@ -158,7 +158,7 @@ pnpm test       # API 集成测试：临时目录 + 独立 SQLite
 pnpm test:ui    # 浏览器 E2E：构建后用独立 SQLite 启动生产服务
 ```
 
-API 测试覆盖：bootstrap、强制 onboarding、创建/删除作品、章节保存与总字数回算、版本快照/回退、大纲场景创建/编辑/排序/删除、人物 CRUD、伏笔、剧本场次、分镜生成/编辑、设置持久化、供应商 Key 加密、AI SSE / 停止保留半截 / 重新生成、Markdown/Word 导出、空导出拦截、项目 JSON 备份导入、章节删除、删光作品后重启不重复 seed。
+API 测试覆盖：bootstrap、强制 onboarding、创建/删除作品、章节保存与总字数回算、版本快照/回退、大纲场景创建/编辑/排序/删除、人物 CRUD、伏笔、剧本场次、分镜生成/编辑、设置持久化、供应商 Key 加密、AI SSE / 停止保留半截 / 重新生成、Markdown/Word 导出、空导出拦截、项目 JSON 备份导入、章节回收站、删光作品后重启不重复 seed。
 
 UI E2E 覆盖：首次引导、作品库、写作台自动保存刷新恢复、AI 企划逐项确认、版本对比/回退、AI 流式生成 / 重新生成 / 插入正文、选中文本改写替换、个人资料、主题刷新持久化、大纲编辑与拖拽、人物编辑、剧本编辑、分镜编辑、作品设置。
 
@@ -206,7 +206,8 @@ POST   /api/ai/stream            (SSE)
 - 富文本编辑器目前基于 contentEditable，后续可换 ProseMirror / Tiptap
 - 供应商目录 / 自动获取模型列表仍是基础版
 - 已有 API 集成测试、Playwright 浏览器 E2E、Electron 桌面 E2E；数据库迁移仍是轻量自愈，没有版本化迁移框架
-- 项目包备份不含 API Key，不提供整库恢复；章节删除不可恢复
+- 项目包备份不含 API Key，不提供整库恢复
+- 章节回收站可恢复；彻底删除章节后版本历史一并清除；删除整部作品仍是级联硬删除
 
 ## 参考
 

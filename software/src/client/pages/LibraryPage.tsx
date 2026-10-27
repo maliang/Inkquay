@@ -57,11 +57,16 @@ export function LibraryPage() {
   const connected = providers.filter((p) => p.configured && p.enabled).length;
   const totalGoal = projects.reduce((sum, p) => sum + p.goalWords, 0) || 1;
   const weeklyProgress = Math.max(1, Math.min(100, Math.round((totalWords / totalGoal) * 100)));
-  const hero = projects[0];
+  const activeProjects = projects.filter((p) => p.status !== '已归档');
+  const archivedCount = projects.length - activeProjects.length;
+  const hero = activeProjects[0] || projects[0];
 
   const filtered = useMemo(() => {
     return projects.filter((p) => {
-      const matchesFilter = filter === 'all' || typeFilter[p.type] === filter;
+      const archived = p.status === '已归档';
+      const matchesFilter = filter === 'archived'
+        ? archived
+        : !archived && (filter === 'all' || typeFilter[p.type] === filter);
       const text = `${p.title} ${p.description} ${p.genre}`.toLowerCase();
       return matchesFilter && (!query.trim() || text.includes(query.trim().toLowerCase()));
     });
@@ -223,7 +228,7 @@ export function LibraryPage() {
                   <div className="section-head">
                     <h2>我的作品 <span>{filtered.length}</span></h2>
                     <div className="filters">
-                      {[['all', '全部'], ['novel', '长篇'], ['short', '短篇'], ['script', '剧本']].map(([id, label]) => (
+                      {[['all', '全部'], ['novel', '长篇'], ['short', '短篇'], ['script', '剧本'], ['archived', `归档${archivedCount ? ` ${archivedCount}` : ''}`]].map(([id, label]) => (
                         <button key={id} type="button" className={filter === id ? 'is-active' : ''} onClick={() => setFilter(id)}>{label}</button>
                       ))}
                     </div>
@@ -246,17 +251,19 @@ export function LibraryPage() {
                         </article>
                       );
                     })}
-                    <button className="project-card project-card--new" type="button" onClick={() => openNew()}>
-                      <span className="new-project-icon"><Icon name="plus" /></span>
-                      <strong>开始新的故事</strong>
-                      <span>从一句话灵感，到完整大纲</span>
-                    </button>
+                    {filter !== 'archived' && (
+                      <button className="project-card project-card--new" type="button" onClick={() => openNew()}>
+                        <span className="new-project-icon"><Icon name="plus" /></span>
+                        <strong>开始新的故事</strong>
+                        <span>从一句话灵感，到完整大纲</span>
+                      </button>
+                    )}
                   </div>
                   {!filtered.length && (
                     <div className="empty-state" style={{ marginTop: 12 }}>
                       <span className="empty-state__icon"><Icon name="search" /></span>
-                      <strong>没有找到匹配的作品</strong>
-                      <p>换个关键词，或清除筛选后再看看。</p>
+                      <strong>{filter === 'archived' ? '还没有归档的作品' : '没有找到匹配的作品'}</strong>
+                      <p>{filter === 'archived' ? '在作品设置里归档的作品会出现在这里，随时可以移出归档。' : '换个关键词，或清除筛选后再看看。'}</p>
                       <button className="btn btn--tiny btn--ghost" type="button" onClick={() => { setQuery(''); setFilter('all'); }}>清除搜索</button>
                     </div>
                   )}

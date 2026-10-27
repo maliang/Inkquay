@@ -69,6 +69,7 @@ function chapterFromRow(row: Row): Chapter {
     sortOrder: Number(row.sort_order),
     words: Number(row.words),
     updatedAt: row.updated_at,
+    deletedAt: row.deleted_at ? String(row.deleted_at) : null,
   };
 }
 
@@ -148,7 +149,7 @@ function shotFromRow(row: Row): Shot {
 
 export function listProjects(): ProjectSummary[] {
   const rows = db.prepare(`
-    SELECT p.*, (SELECT COUNT(*) FROM chapters c WHERE c.project_id = p.id) AS chapter_count
+    SELECT p.*, (SELECT COUNT(*) FROM chapters c WHERE c.project_id = p.id AND c.deleted_at IS NULL) AS chapter_count
     FROM projects p
     ORDER BY p.updated_at DESC
   `).all() as Row[];
@@ -157,11 +158,11 @@ export function listProjects(): ProjectSummary[] {
 
 export function getProjectDetail(id: string): ProjectDetail | null {
   const row = db.prepare(`
-    SELECT p.*, (SELECT COUNT(*) FROM chapters c WHERE c.project_id = p.id) AS chapter_count
+    SELECT p.*, (SELECT COUNT(*) FROM chapters c WHERE c.project_id = p.id AND c.deleted_at IS NULL) AS chapter_count
     FROM projects p WHERE p.id = ?
   `).get(id) as Row | undefined;
   if (!row) return null;
-  const chapters = (db.prepare('SELECT * FROM chapters WHERE project_id = ? ORDER BY sort_order ASC').all(id) as Row[]).map(chapterFromRow);
+  const chapters = (db.prepare('SELECT * FROM chapters WHERE project_id = ? AND deleted_at IS NULL ORDER BY sort_order ASC').all(id) as Row[]).map(chapterFromRow);
   const characters = (db.prepare('SELECT * FROM characters WHERE project_id = ? ORDER BY sort_order ASC').all(id) as Row[]).map(characterFromRow);
   const acts = (db.prepare('SELECT * FROM outline_acts WHERE project_id = ? ORDER BY sort_order ASC').all(id) as Row[]).map((a) => ({
     id: a.id, projectId: a.project_id, title: a.title, summary: a.summary, sortOrder: Number(a.sort_order),
@@ -191,7 +192,7 @@ export function getChapter(id: string): Chapter | null {
 
 export function updateChapter(id: string, patch: ChapterPatch): Chapter | null {
   const existing = getChapter(id);
-  if (!existing) return null;
+  if (!existing || existing.deletedAt) return null;
   const next = {
     title: patch.title ?? existing.title,
     content: patch.content ?? existing.content,
@@ -234,7 +235,7 @@ export function createChapter(projectId: string, input: { title?: string; volume
 }
 
 export function recalculateProjectWords(projectId: string) {
-  const row = db.prepare('SELECT COALESCE(SUM(words), 0) AS words FROM chapters WHERE project_id = ?').get(projectId) as Row;
+  const row = db.prepare('SELECT COALESCE(SUM(words), 0) AS words FROM chapters WHERE project_id = ? AND deleted_at IS NULL').get(projectId) as Row;
   db.prepare('UPDATE projects SET total_words = ? WHERE id = ?').run(Number(row.words), projectId);
 }
 
@@ -452,16 +453,19 @@ export function buildWritingContext(projectId: string, chapterId: string | null)
   ].filter(Boolean).join('\n\n');
 }
 
-export function exportProjectMarkdown(projectId: string): string | null {
+export function exportProjectMarkdown(projectId: string, chapterId?: string | null): string | null {
   const project = getProjectDetail(projectId);
   if (!project) return null;
-  const lines = [`# ${project.title}`, '', `> ${project.description}`, '', `作者：${getSettings().profile.name}`, ''];
+  const chapter = chapterId ? project.chapters.find((item) => item.id === chapterId) : null;
+  if (chapterId && !chapter) return null;
+  const scopedTitle = chapter ? `${project.title} · ${chapter.number} ${chapter.title}` : project.title;
+  const lines = [`# ${scopedTitle}`, '', `> ${project.description}`, '', `作者：${getSettings().profile.name}`, ''];
   if (project.type === 'screenplay') {
     project.scenes.forEach((s) => {
       lines.push(`## ${s.heading}`, '', s.content, '');
     });
   } else {
-    project.chapters.forEach((c) => {
+    (chapter ? [chapter] : project.chapters).forEach((c) => {
       lines.push(`## ${c.number} ${c.title}`, '', c.content, '');
     });
   }
@@ -661,7 +665,33 @@ export function deleteProject(id: string): boolean {
 
 export function deleteChapter(id: string): { projectId: string; versions: number } | null {
   const chapter = getChapter(id);
-  if (!chapter) return null;
+  if (!chapter || chapter.deletedAt) return null;
+  const row = db.prepare('SELECT COUNT(*) AS count FROM chapter_versions WHERE chapter_id = ?').get(id) as Row;
+  const stamp = now();
+  db.prepare('UPDATE chapters SET deleted_at = ?, updated_at = ? WHERE id = ?').run(stamp, stamp, id);
+  db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(stamp, chapter.projectId);
+  recalculateProjectWords(chapter.projectId);
+  return { projectId: chapter.projectId, versions: Number(row.count) || 0 };
+}
+
+export function listDeletedChapters(projectId: string): Chapter[] {
+  return (db.prepare('SELECT * FROM chapters WHERE project_id = ? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC').all(projectId) as Row[]).map(chapterFromRow);
+}
+
+export function restoreChapter(id: string): { projectId: string; chapter: Chapter } | null {
+  const chapter = getChapter(id);
+  if (!chapter || !chapter.deletedAt) return null;
+  const stamp = now();
+  db.prepare('UPDATE chapters SET deleted_at = NULL, updated_at = ? WHERE id = ?').run(stamp, id);
+  db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(stamp, chapter.projectId);
+  recalculateProjectWords(chapter.projectId);
+  const restored = getChapter(id);
+  return restored ? { projectId: chapter.projectId, chapter: restored } : null;
+}
+
+export function purgeChapter(id: string): { projectId: string; versions: number } | null {
+  const chapter = getChapter(id);
+  if (!chapter || !chapter.deletedAt) return null;
   const row = db.prepare('SELECT COUNT(*) AS count FROM chapter_versions WHERE chapter_id = ?').get(id) as Row;
   db.prepare('DELETE FROM chapters WHERE id = ?').run(id);
   db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now(), chapter.projectId);
@@ -719,7 +749,7 @@ export function exportProjectBundle(projectId: string): ProjectBundle | null {
       shots: project.shots,
       foreshadows: project.foreshadows,
       versions: db.prepare(
-        'SELECT id, project_id AS projectId, chapter_id AS chapterId, source, title, content, words, created_at AS createdAt FROM chapter_versions WHERE project_id = ? ORDER BY created_at ASC',
+        'SELECT v.id, v.project_id AS projectId, v.chapter_id AS chapterId, v.source, v.title, v.content, v.words, v.created_at AS createdAt FROM chapter_versions v JOIN chapters c ON c.id = v.chapter_id WHERE v.project_id = ? AND c.deleted_at IS NULL ORDER BY v.created_at ASC',
       ).all(projectId) as unknown as ChapterVersion[],
     },
   };
@@ -917,7 +947,7 @@ export function applyProjectPlan(projectId: string, plan: ProjectPlan): ProjectD
 
 export function createChapterVersion(chapterId: string, source: string, content?: string, title?: string): ChapterVersion | null {
   const chapter = getChapter(chapterId);
-  if (!chapter) return null;
+  if (!chapter || chapter.deletedAt) return null;
   const snapshot = content ?? chapter.content;
   const chapterTitle = title ?? chapter.title;
   const latest = db.prepare('SELECT * FROM chapter_versions WHERE chapter_id = ? ORDER BY created_at DESC LIMIT 1').get(chapterId) as Row | undefined;
@@ -935,11 +965,19 @@ export function listChapterVersions(projectId: string, chapterId: string): Chapt
   return (db.prepare('SELECT * FROM chapter_versions WHERE project_id = ? AND chapter_id = ? ORDER BY created_at DESC').all(projectId, chapterId) as Row[]).map(versionFromRow);
 }
 
+export function listProjectVersions(projectId: string): ChapterVersion[] {
+  const rows = db.prepare(`SELECT v.*, c.title AS chapter_title
+    FROM chapter_versions v JOIN chapters c ON c.id = v.chapter_id
+    WHERE v.project_id = ? AND c.deleted_at IS NULL
+    ORDER BY v.created_at DESC`).all(projectId) as Row[];
+  return rows.map((row) => ({ ...versionFromRow(row), chapterTitle: String(row.chapter_title || '') }));
+}
+
 export function restoreChapterVersion(chapterId: string, versionId: string): { chapter: Chapter; versions: ChapterVersion[] } | null {
   const version = db.prepare('SELECT * FROM chapter_versions WHERE id = ? AND chapter_id = ?').get(versionId, chapterId) as Row | undefined;
   if (!version) return null;
   const current = getChapter(chapterId);
-  if (!current) return null;
+  if (!current || current.deletedAt) return null;
   createChapterVersion(chapterId, '回退前', current.content, current.title);
   db.prepare('UPDATE chapters SET title = ?, content = ?, words = ?, updated_at = ? WHERE id = ?')
     .run(version.title, version.content, countWords(version.content), now(), chapterId);

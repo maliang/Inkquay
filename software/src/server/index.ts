@@ -30,6 +30,10 @@ import {
   getProjectDetail,
   getSettings,
   listChapterVersions,
+  listProjectVersions,
+  listDeletedChapters,
+  restoreChapter,
+  purgeChapter,
   listMessages,
   listProjects,
   listProviders,
@@ -142,9 +146,14 @@ app.post('/api/projects/:id/chapters', (req, res) => {
 });
 
 app.get('/api/projects/:id/versions', (req, res) => {
-  const chapterId = String(req.query.chapterId || '');
-  if (!chapterId) return res.status(400).json({ error: '缺少 chapterId' });
+  const chapterId = typeof req.query.chapterId === 'string' ? req.query.chapterId : '';
+  if (!chapterId) return res.json({ versions: listProjectVersions(req.params.id) });
   res.json({ versions: listChapterVersions(req.params.id, chapterId) });
+});
+
+app.get('/api/projects/:id/trash', (req, res) => {
+  if (!getProjectDetail(req.params.id)) return res.status(404).json({ error: '作品不存在' });
+  res.json({ chapters: listDeletedChapters(req.params.id) });
 });
 
 app.post('/api/chapters/:id/versions', (req, res) => {
@@ -171,6 +180,18 @@ app.patch('/api/chapters/:id', (req, res) => {
 app.delete('/api/chapters/:id', (req, res) => {
   const result = deleteChapter(req.params.id);
   if (!result) return res.status(404).json({ error: '章节不存在' });
+  res.json({ ok: true, trashed: true, ...result });
+});
+
+app.post('/api/chapters/:id/restore', (req, res) => {
+  const result = restoreChapter(req.params.id);
+  if (!result) return res.status(404).json({ error: '回收站里没有这一章' });
+  res.json({ ok: true, ...result, project: getProjectDetail(result.projectId) });
+});
+
+app.delete('/api/chapters/:id/purge', (req, res) => {
+  const result = purgeChapter(req.params.id);
+  if (!result) return res.status(404).json({ error: '回收站里没有这一章' });
   res.json({ ok: true, ...result });
 });
 
@@ -341,11 +362,16 @@ app.post('/api/providers/:id/test', async (req, res) => {
 app.get('/api/projects/:id/export.docx', async (req, res) => {
   const project = getProjectDetail(req.params.id);
   if (!project) return res.status(404).json({ error: '作品不存在' });
-  const hasBody = project.chapters.some((chapter) => chapter.content.trim()) || project.scenes.some((scene) => scene.content.trim());
-  if (!hasBody) return res.status(400).json({ error: '这本还没有可导出的正文' });
-  const buffer = await buildProjectDocx(project);
+  const chapterId = typeof req.query.chapterId === 'string' ? req.query.chapterId : '';
+  const chapter = chapterId ? project.chapters.find((item) => item.id === chapterId) : null;
+  if (chapterId && !chapter && project.type !== 'screenplay') return res.status(404).json({ error: '章节不存在' });
+  const scoped = chapter && project.type !== 'screenplay' ? { ...project, chapters: [chapter] } : project;
+  const hasBody = scoped.chapters.some((item) => item.content.trim()) || scoped.scenes.some((scene) => scene.content.trim());
+  if (!hasBody) return res.status(400).json({ error: chapter ? '这一章还没有可导出的正文' : '这本还没有可导出的正文' });
+  const buffer = await buildProjectDocx(scoped);
+  const name = chapter && project.type !== 'screenplay' ? `${project.title}-${chapter.number}${chapter.title}` : project.title;
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`${project.title}.docx`)}`);
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`${name}.docx`)}`);
   res.send(buffer);
 });
 
@@ -371,13 +397,18 @@ app.post('/api/projects/import', (req, res) => {
 app.get('/api/projects/:id/export', (req, res) => {
   const project = getProjectDetail(req.params.id);
   if (!project) return res.status(404).json({ error: '作品不存在' });
-  const hasBody = project.chapters.some((chapter) => chapter.content.trim()) || project.scenes.some((scene) => scene.content.trim());
-  if (!hasBody) return res.status(400).json({ error: '这本还没有可导出的正文' });
-  const markdown = exportProjectMarkdown(req.params.id);
+  const chapterId = typeof req.query.chapterId === 'string' ? req.query.chapterId : '';
+  const chapter = chapterId ? project.chapters.find((item) => item.id === chapterId) : null;
+  if (chapterId && !chapter && project.type !== 'screenplay') return res.status(404).json({ error: '章节不存在' });
+  const scoped = chapter && project.type !== 'screenplay' ? { ...project, chapters: [chapter] } : project;
+  const hasBody = scoped.chapters.some((item) => item.content.trim()) || scoped.scenes.some((scene) => scene.content.trim());
+  if (!hasBody) return res.status(400).json({ error: chapter ? '这一章还没有可导出的正文' : '这本还没有可导出的正文' });
+  const markdown = exportProjectMarkdown(req.params.id, chapterId || null);
   if (!markdown) return res.status(404).json({ error: '作品不存在' });
-  const safeName = project.title.replace(/[\\/:*?"<>|]/g, '_');
+  const name = chapter && project.type !== 'screenplay' ? `${project.title}-${chapter.number}${chapter.title}` : project.title;
+  const safeName = name.replace(/[\\/:*?"<>|]/g, '_');
   res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(safeName)}.md`);
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`${safeName}.md`)}`);
   res.send(markdown);
 });
 

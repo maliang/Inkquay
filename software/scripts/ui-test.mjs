@@ -133,6 +133,25 @@ try {
   await page.waitForTimeout(550);
   assert.equal(await page.locator('.version-compare').count(), 0, 'version restore closes compare');
   console.log('PASS version compare + restore');
+  await page.locator('.version-scope button', { hasText: '全书' }).click();
+  await page.waitForTimeout(500);
+  assert.ok((await page.locator('.version-item').count()) >= 1, 'project-wide version list available');
+  console.log('PASS project-wide version list');
+
+  await page.locator('button[aria-label="新建章节"]').click();
+  await page.waitForTimeout(700);
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.locator('button[title="移入回收站"]').click();
+  await page.waitForTimeout(700);
+  await page.locator('button[aria-label="回收站"]').click();
+  await page.waitForSelector('.trash-modal');
+  await page.waitForSelector('.trash-item');
+  assert.equal(await page.locator('.trash-item').count(), 1, 'deleted chapter appears in trash');
+  await page.locator('.trash-item .btn--primary').click();
+  await page.waitForTimeout(700);
+  assert.equal(await page.locator('.trash-item').count(), 0, 'chapter restored from trash');
+  await page.locator('.trash-modal .modal__foot .btn--ghost').click();
+  console.log('PASS chapter trash + restore');
   console.log('PASS AI stream + regenerate + insert + local check');
 
   await page.goto(`${base}/settings`, { waitUntil: 'networkidle' });
@@ -237,7 +256,27 @@ try {
   await page.locator('.project-card', { hasText: 'E2E 长篇' }).locator('.project-card__more').click();
   await page.waitForSelector('.modal--project-settings');
   assert.equal(await page.locator('.modal--project-settings .form-row input').first().inputValue(), 'E2E 悬疑');
+  await page.locator('.modal--project-settings .modal__head .icon-btn').click();
+  await page.waitForTimeout(250);
   console.log('PASS project settings');
+
+  await page.locator('.project-card', { hasText: 'E2E 长篇' }).hover();
+  await page.locator('.project-card', { hasText: 'E2E 长篇' }).locator('.project-card__more').click();
+  await page.waitForSelector('.modal--project-settings');
+  await page.locator('.modal--project-settings select').selectOption('已归档');
+  await page.locator('.modal--project-settings .modal__foot .btn--primary').click();
+  await page.waitForTimeout(700);
+  await page.locator('.filters button', { hasText: '归档' }).click();
+  await page.waitForTimeout(250);
+  assert.equal(await page.locator('.project-card', { hasText: 'E2E 长篇' }).count(), 1, 'archived project remains visible under archive filter');
+  await page.locator('.project-card', { hasText: 'E2E 长篇' }).hover();
+  await page.locator('.project-card', { hasText: 'E2E 长篇' }).locator('.project-card__more').click();
+  await page.waitForSelector('.modal--project-settings');
+  await page.locator('.modal--project-settings .modal__foot .btn--ghost', { hasText: '移出归档' }).click();
+  await page.waitForTimeout(700);
+  await page.locator('.filters button', { hasText: '全部' }).click();
+  assert.equal(await page.locator('.project-card', { hasText: 'E2E 长篇' }).count(), 1, 'unarchived project returns to all');
+  console.log('PASS archive visibility + unarchive');
 
   assert.deepEqual(errors, [], `browser errors: ${errors.join('\n')}`);
   console.log('\nAll UI tests passed.');

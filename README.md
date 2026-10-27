@@ -87,14 +87,14 @@ pnpm desktop:dmg     # 本机架构 .dmg
 
 ## 当前进度
 
-**Milestone 11 · 稳定性与日常体验（方案 A）**
+**Milestone 12 · 长线写作与发布验收**
 
 - 无演示数据；首次启动强制填写称呼与 API Key
-- 作品库、新建作品、空书房引导、作品设置、归档、级联删除
+- 作品库、新建作品、空书房引导、作品设置、归档筛选与移出归档、级联删除
 - 章节树、正文编辑、800ms 自动保存、⌘S / Ctrl+S 立即保存、字数统计
 - 关闭窗口前先落盘再退出（Electron 主进程与渲染层握手，失败则取消关闭）
 - AI 企划：一句灵感 → 预览 → 逐项确认 → 三幕大纲 / 人物 / 第一章；可取消、失败可重试
-- 章节版本：AI 企划 / 插入 / 改写 / 自动保存 / 切换章节自动快照，左右对比与回退
+- 章节版本：AI 企划 / 插入 / 改写 / 自动保存 / 切换章节自动快照，左右对比与回退；可按章或按全书查看历史
 - AI 流式共笔、重新生成、停止生成保留已生成部分、消息持久化、插入正文、模型切换
 - 选中文本 → 改写 / 扩写 / 精简 / 换语气 → 精确替换原选区，不误伤同文其他位置
 - 模型供应商：OpenAI 兼容 / Anthropic / Gemini / 本地 mock
@@ -103,10 +103,10 @@ pnpm desktop:dmg     # 本机架构 .dmg
 - 人物 CRUD、伏笔新增/编辑/删除
 - 剧本场次编辑 / 新增 / 删除
 - 分镜板：每场生成 6 个模板镜头，可编辑、删除并持久化
-- 章节删除（明确提示历史版本一并删除）
+- 章节删除先移入回收站，可恢复；彻底删除前明确提示历史版本会一并清除
 - 个人资料：称呼 / 笔名、签名、头像首字，贯穿问候与导出署名
 - 四套主题、六种强调色、自定义颜色、字号与动效
-- Markdown / Word（.docx）导出（空作品给出中文错误，不再下载空文件）
+- Markdown / Word（.docx）导出，可选全书或当前章；空作品/空章节给出中文错误，不再下载空文件
 - 项目 JSON 备份 / 导入：含章节、版本历史、大纲、人物、场次、分镜与伏笔；**不含 API Key**，不是整库恢复
 - 桌面版：独立 `.app/.dmg`、Windows NSIS、Linux AppImage/deb，内置本地服务，不依赖系统 Node
 - 隔离 SQLite 的 API 集成测试 + Playwright 浏览器 E2E + Electron 桌面 E2E
@@ -158,6 +158,12 @@ pnpm desktop:dmg     # 本机架构 .dmg
 - 数据库：Node 内置 `node:sqlite`，WAL 模式
 - 密钥：`software/data/.secret` + AES-256-GCM
 
+## 真实供应商与跨平台验收
+
+- 配置真实 Key 后运行 `cd software && pnpm test:providers`，会逐家检查连接并做一次极短真实流式生成；没有 Key 默认 SKIP。
+- CI 平台冒烟见 `.github/workflows/platform-smoke.yml`；本机 Linux arm64 已用 Docker + Xvfb 验证启动与页面加载。
+- Windows/Linux 桌面 E2E 走 GitHub Actions 的 `Platform smoke`（手动或相关 PR 触发），细节见 [docs/RELEASE-ACCEPTANCE.md](docs/RELEASE-ACCEPTANCE.md)。
+
 ## 测试
 
 ```bash
@@ -167,7 +173,7 @@ pnpm test:ui    # 构建后用独立 SQLite 启动生产服务，跑 Playwright
 pnpm desktop:test  # 启动 Electron，验证编辑 → 关闭 → 重启后数据保留
 ```
 
-覆盖首次初始化（强制称呼 / API Key）、作品、章节、自动保存、总字数、版本快照与回退、大纲、人物、伏笔、剧本、分镜、设置、供应商 Key、AI SSE / 停止保留半截 / 重新生成、Markdown/Word 导出、空导出拦截、项目 JSON 备份导入、章节删除级联、删光作品后重启不重复 seed。
+覆盖首次初始化（强制称呼 / API Key）、作品、章节、自动保存、总字数、版本快照与回退、全书历史、章节回收站/恢复/彻底删除、大纲、人物、伏笔、剧本、分镜、归档筛选、设置、供应商 Key、AI SSE / 停止保留半截 / 重新生成、全书/本章 Markdown/Word 导出、空导出拦截、项目 JSON 备份导入、删光作品后重启不重复 seed。
 
 ## 已知边界
 
@@ -176,10 +182,11 @@ pnpm desktop:test  # 启动 Electron，验证编辑 → 关闭 → 重启后数�
 - 富文本编辑器仍是 contentEditable
 - 暂无账号系统、多用户、云同步；称呼和 API 只是本地设置
 - AI 企划已支持逐项确认，章节版本可对比回退
-- 章节删除是硬删除，历史版本会一并删除，不能恢复；本轮不做回收站
+- 章节回收站只覆盖章节；删除整部作品仍是级联硬删除，不能恢复
 - 项目包备份不含供应商 Key，也不提供整库恢复；换机后需重新填 Key
-- 还没有跨章节的版本总览与分支版本
+- 版本历史每章最多 40 条；暂无分支版本、版本命名与跨章合并
 - macOS 默认未签名/未公证；Windows 默认未签名，Linux 默认未签名
+- Windows/Linux 已有 CI 冒烟入口；本机只实际跑过 Linux arm64 的启动/页面加载，Windows 真机仍待 CI 或实机验证
 - Linux 自动更新只对 AppImage 生效，deb 需要手动升级
 - 静态原型已归档，但还没有正式删除
 

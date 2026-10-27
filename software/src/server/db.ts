@@ -38,6 +38,7 @@ export function migrate() {
       status TEXT NOT NULL DEFAULT '草稿',
       sort_order INTEGER NOT NULL DEFAULT 0,
       words INTEGER NOT NULL DEFAULT 0,
+      deleted_at TEXT,
       updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_chapters_project ON chapters(project_id, sort_order);
@@ -173,6 +174,10 @@ export function migrate() {
   const messageColumns = db.prepare('PRAGMA table_info(ai_messages)').all() as Array<{ name: string }>;
   if (!messageColumns.some((column) => column.name === 'status')) {
     db.exec("ALTER TABLE ai_messages ADD COLUMN status TEXT NOT NULL DEFAULT 'complete'");
+  }
+  const chapterColumns = db.prepare('PRAGMA table_info(chapters)').all() as Array<{ name: string }>;
+  if (!chapterColumns.some((column) => column.name === 'deleted_at')) {
+    db.exec('ALTER TABLE chapters ADD COLUMN deleted_at TEXT');
   }
 
   // seedDatabase 现在是幂等的（INSERT OR IGNORE），每次启动都执行。

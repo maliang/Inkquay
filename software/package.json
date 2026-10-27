@@ -12,7 +12,8 @@
     "seed": "tsx src/server/seed.ts",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/api-test.mjs",
-    "test:ui": "pnpm build && node scripts/ui-test.mjs"
+    "test:ui": "pnpm build && node scripts/ui-test.mjs",
+    "test:providers": "node scripts/provider-smoke.mjs"
   },
   "keywords": [],
   "author": "",

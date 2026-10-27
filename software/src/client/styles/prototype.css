@@ -1368,6 +1368,19 @@ svg {
   width: 30px;
   height: 30px;
 }
+.export-scope {
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: var(--text-2);
+  font-size: 11px;
+  padding: 0 4px;
+  outline: none;
+}
+.export-scope:focus {
+  border-color: var(--cinnabar);
+}
 .topbar-actions .btn {
   height: 32px;
   font-size: 11.5px;

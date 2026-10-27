@@ -41,8 +41,8 @@ export function ProjectSettingsModal({
     }
   }
 
-  async function archive() {
-    await save('已归档');
+  async function toggleArchive() {
+    await save(status === '已归档' ? '连载中' : '已归档');
   }
 
   async function remove() {
@@ -76,7 +76,7 @@ export function ProjectSettingsModal({
         <footer className="modal__foot modal__foot--spread">
           <button className="btn btn--ghost btn--danger" type="button" disabled={busy} onClick={remove}><Icon name="trash" /> 删除作品</button>
           <div className="modal__foot-actions">
-            <button className="btn btn--ghost" type="button" disabled={busy} onClick={archive}>归档</button>
+            <button className="btn btn--ghost" type="button" disabled={busy} onClick={toggleArchive}>{status === '已归档' ? '移出归档' : '归档'}</button>
             <button className="btn btn--ghost" type="button" onClick={onClose}>取消</button>
             <button className="btn btn--primary" type="button" disabled={busy} onClick={() => save()}>{busy ? '保存中…' : '保存信息'}</button>
           </div>

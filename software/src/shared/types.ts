@@ -101,6 +101,7 @@ export interface Chapter {
   sortOrder: number;
   words: number;
   updatedAt: string;
+  deletedAt?: string | null;
 }
 
 export interface CharacterRelation {
@@ -292,4 +293,5 @@ export interface ChapterVersion {
   content: string;
   words: number;
   createdAt: string;
+  chapterTitle?: string;
 }

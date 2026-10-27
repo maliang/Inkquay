@@ -49,9 +49,15 @@ export function StudioPage() {
   const [planningProject, setPlanningProject] = useState(false);
   const [planPreview, setPlanPreview] = useState<ProjectPlan | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportScope, setExportScope] = useState<'book' | 'chapter'>('book');
   const [stopped, setStopped] = useState(false);
   const [versions, setVersions] = useState<ChapterVersion[]>([]);
+  const [versionScope, setVersionScope] = useState<'chapter' | 'book'>('chapter');
   const [compareVersion, setCompareVersion] = useState<ChapterVersion | null>(null);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [trashChapters, setTrashChapters] = useState<Chapter[]>([]);
+  const [trashBusy, setTrashBusy] = useState('');
+  const [chapterBusy, setChapterBusy] = useState(false);
   const [selectionText, setSelectionText] = useState('');
   const [rewriteSource, setRewriteSource] = useState('');
   const [rewriteMessageId, setRewriteMessageId] = useState('');
@@ -156,14 +162,14 @@ export function StudioPage() {
   }, [messages, streamText, streaming]);
 
   const refreshVersions = useCallback(async () => {
-    if (!project || !activeId) return;
+    if (!project || (!activeId && versionScope === 'chapter')) return;
     try {
-      const { versions: rows } = await api.versions(project.id, activeId);
+      const { versions: rows } = await api.versions(project.id, versionScope === 'book' ? undefined : activeId);
       setVersions(rows);
     } catch {
       // version history is non-critical
     }
-  }, [project?.id, activeId]);
+  }, [project?.id, activeId, versionScope]);
 
   useEffect(() => { void refreshVersions(); }, [refreshVersions]);
 
@@ -437,19 +443,23 @@ export function StudioPage() {
   }
 
   async function restoreVersion(version: ChapterVersion) {
-    if (!activeId) return;
+    const targetId = version.chapterId;
+    if (!targetId) return;
     try {
-      const result = await api.restoreVersion(activeId, version.id);
+      if (activeId && activeId !== targetId) await saveNow();
+      const result = await api.restoreVersion(targetId, version.id);
+      const target = project?.chapters.find((c) => c.id === targetId);
+      setProject((prev) => prev ? { ...prev, chapters: prev.chapters.map((c) => c.id === result.chapter.id ? result.chapter : c) } : prev);
+      setActiveId(targetId);
       setContent(result.chapter.content);
       setTitle(result.chapter.title);
-      activeRef.current = { id: activeId, title: result.chapter.title, content: result.chapter.content };
+      activeRef.current = { id: targetId, title: result.chapter.title, content: result.chapter.content };
       if (editorRef.current) editorRef.current.innerHTML = htmlFromContent(result.chapter.content);
-      setProject((prev) => prev ? { ...prev, chapters: prev.chapters.map((c) => c.id === result.chapter.id ? result.chapter : c) } : prev);
-      setVersions(result.versions);
       setCompareVersion(null);
       lastSnapshotContentRef.current = result.chapter.content;
       setSaveState('saved');
-      toast('已恢复这一版');
+      if (versionScope === 'book') void refreshVersions(); else setVersions(result.versions);
+      toast(activeId === targetId ? '已恢复这一版' : `已切换到「${target?.title || result.chapter.title}」并恢复`);
     } catch (err) {
       toast(err instanceof Error ? err.message : '恢复失败', 'warn');
     }
@@ -546,7 +556,7 @@ export function StudioPage() {
   }
 
   async function removeActiveChapter() {
-    if (!project || !activeChapter) return;
+    if (!project || !activeChapter || chapterBusy) return;
     if (project.chapters.length <= 1) {
       toast('至少保留一章；可以先新建一章再删除这一章', 'warn');
       return;
@@ -557,11 +567,12 @@ export function StudioPage() {
       versionCount = rows.length;
     } catch { /* count is best effort */ }
     const ok = window.confirm(
-      `确定删除「${activeChapter.number} ${activeChapter.title}」？\n\n`
-      + `本章 ${versionCount} 条历史版本会一并删除，删除后无法恢复。\n`
-      + '正文不会进入回收站。',
+      `确定把「${activeChapter.number} ${activeChapter.title}」移入回收站？\n\n`
+      + `本章 ${versionCount} 条历史版本会一起保留，可在回收站恢复。\n`
+      + '回收站里彻底删除后，历史版本也会一并清除。',
     );
     if (!ok) return;
+    setChapterBusy(true);
     try {
       await api.deleteChapter(activeChapter.id);
       const remaining = project.chapters.filter((c) => c.id !== activeChapter.id);
@@ -578,19 +589,82 @@ export function StudioPage() {
         localStorage.setItem(`pw.chapter.${project.id}`, next.id);
       }
       setVersions([]);
-      toast('章节已删除');
+      toast('章节已移入回收站');
     } catch (err) {
       toast(err instanceof Error ? err.message : '删除章节失败', 'warn');
+    } finally {
+      setChapterBusy(false);
+    }
+  }
+
+  async function openTrash() {
+    if (!project) return;
+    setTrashOpen(true);
+    try {
+      const { chapters } = await api.trashChapters(project.id);
+      setTrashChapters(chapters);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '读取回收站失败', 'warn');
+    }
+  }
+
+  async function restoreTrashed(chapter: Chapter) {
+    if (!project || trashBusy) return;
+    setTrashBusy(chapter.id);
+    try {
+      const { project: updated } = await api.restoreChapter(chapter.id);
+      setProject(updated);
+      setTrashChapters((prev) => prev.filter((c) => c.id !== chapter.id));
+      if (!activeId) {
+        const first = updated.chapters[0];
+        if (first) {
+          setActiveId(first.id);
+          setTitle(first.title);
+          setContent(first.content);
+          activeRef.current = { id: first.id, title: first.title, content: first.content };
+          if (editorRef.current) editorRef.current.innerHTML = htmlFromContent(first.content);
+        }
+      }
+      toast('已从回收站恢复');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '恢复失败', 'warn');
+    } finally {
+      setTrashBusy('');
+    }
+  }
+
+  async function purgeTrashed(chapter: Chapter) {
+    if (!project || trashBusy) return;
+    const ok = window.confirm(`彻底删除「${chapter.number} ${chapter.title}」？\n\n这一章和它的全部历史版本都会永久清除。`);
+    if (!ok) return;
+    setTrashBusy(chapter.id);
+    try {
+      await api.purgeChapter(chapter.id);
+      setTrashChapters((prev) => prev.filter((c) => c.id !== chapter.id));
+      const { project: updated } = await api.project(project.id);
+      setProject(updated);
+      toast('已彻底删除');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '彻底删除失败', 'warn');
+    } finally {
+      setTrashBusy('');
     }
   }
 
   async function exportBook(kind: 'docx' | 'md') {
     if (!project || exporting) return;
+    const chapterId = exportScope === 'chapter' ? activeChapter?.id : undefined;
+    if (exportScope === 'chapter' && !chapterId) {
+      toast('当前没有可导出的章节', 'warn');
+      return;
+    }
     setExporting(true);
     try {
-      if (kind === 'docx') await api.downloadProjectDocx(project.id);
-      else await api.downloadProjectMarkdown(project.id);
-      toast(kind === 'docx' ? 'Word 已开始下载' : 'Markdown 已开始下载');
+      if (kind === 'docx') await api.downloadProjectDocx(project.id, chapterId);
+      else await api.downloadProjectMarkdown(project.id, chapterId);
+      toast(kind === 'docx'
+        ? `${exportScope === 'chapter' ? '本章' : '全书'} Word 已开始下载`
+        : `${exportScope === 'chapter' ? '本章' : '全书'} Markdown 已开始下载`);
     } catch (err) {
       toast(err instanceof Error ? err.message : '导出失败', 'warn');
     } finally {
@@ -688,7 +762,13 @@ export function StudioPage() {
         <span className={`tb-save`}><i style={{ background: saveState === 'saved' ? 'var(--jade)' : 'var(--gold)' }} />{saveState === 'saved' ? '已保存' : saveState === 'saving' ? '保存中…' : '有未保存修改'}</span>
         <span className="tb-words"><b>{formatNumber(project.totalWords)}</b> 字</span>
         <div className="tb-divider" />
-        <button className="icon-btn tb-icon" type="button" disabled={exporting} onClick={() => void exportBook('docx')} title="导出 Word"><Icon name="book" /></button>
+        {project.type !== 'screenplay' && (
+          <select className="export-scope" value={exportScope} onChange={(e) => setExportScope(e.target.value as 'book' | 'chapter')} title="导出范围">
+            <option value="book">全书</option>
+            <option value="chapter">本章</option>
+          </select>
+        )}
+        <button className="icon-btn tb-icon" type="button" disabled={exporting} onClick={() => void exportBook('docx')} title={`导出${exportScope === 'chapter' ? '本章' : '全书'} Word`}><Icon name="book" /></button>
         <button className="icon-btn tb-icon" type="button" disabled={exporting} onClick={() => void exportBook('md')} title="导出 Markdown"><Icon name="download" /></button>
         <button className="icon-btn tb-icon" type="button" disabled={exporting} onClick={() => void backupProject()} title="备份项目包（JSON，不含 API Key）"><Icon name="layers" /></button>
         <Link className="icon-btn tb-icon" to="/settings" title="设置"><Icon name="settings" /></Link>
@@ -708,6 +788,7 @@ export function StudioPage() {
         <div className="panel-section-head">
           <span>目录 <em>{project.chapters.length} 章</em></span>
           <div className="panel-section-tools">
+            <button className="icon-btn icon-btn--sm" type="button" disabled={chapterBusy} onClick={openTrash} aria-label="回收站" title="回收站"><Icon name="trash" /></button>
             <button className="icon-btn icon-btn--sm" type="button" onClick={addChapter} aria-label="新建章节"><Icon name="plus" /></button>
           </div>
         </div>
@@ -761,7 +842,7 @@ export function StudioPage() {
                 }}><Icon name="columns" /></button>
                 <button className="tool-btn tool-btn--ai" type="button" title="让 AI 续写" onClick={() => sendPrompt('续写下一段，保持当前文风。')}><Icon name="spark" /><span>AI</span></button>
                 <span className="tool-sep" />
-                <button className="tool-btn" type="button" title="删除本章（含历史版本）" onClick={() => void removeActiveChapter()}><Icon name="trash" /></button>
+                <button className="tool-btn" type="button" title="移入回收站" onClick={() => void removeActiveChapter()}><Icon name="trash" /></button>
               </div>
               <div className="doc-toolbar__group doc-toolbar__group--right">
                 <span className="tool-meta">约 {Math.max(1, Math.ceil(words / 400))} 分钟阅读</span>
@@ -953,18 +1034,19 @@ export function StudioPage() {
               </div>
             ) : (
               <div className="ai-check version-pane">
-                <div className="check-summary"><div className="check-ring"><strong>{versions.length}</strong><span>个版本</span></div><div><strong>生成版本</strong><p>AI 插入、改写和企划都会留下快照</p></div></div>
+                <div className="check-summary"><div className="check-ring"><strong>{versions.length}</strong><span>个版本</span></div><div><strong>{versionScope === 'book' ? '全书版本' : '本章版本'}</strong><p>{versionScope === 'book' ? '跨章查看，可跳到对应章节回退' : 'AI 插入、改写和企划都会留下快照'}</p></div></div>
+                <div className="version-scope"><button className={versionScope === 'chapter' ? 'is-active' : ''} type="button" onClick={() => setVersionScope('chapter')}>本章</button><button className={versionScope === 'book' ? 'is-active' : ''} type="button" onClick={() => setVersionScope('book')}>全书</button></div>
                 <div className="version-list">
                   {versions.length ? versions.map((version) => (
                     <button key={version.id} type="button" className="version-item" onClick={() => setCompareVersion(version)}>
                       <span className="version-item__dot" />
-                      <span className="version-item__body"><strong>{version.source}</strong><em>{version.title} · {new Date(version.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</em></span>
+                      <span className="version-item__body"><strong>{version.source}</strong><em>{versionScope === 'book' ? `${version.chapterTitle || '未命名章节'} · ` : ''}{version.title} · {new Date(version.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</em></span>
                       <span className="version-item__words">{formatNumber(version.words)} 字</span>
                       <Icon name="chevron-right" />
                     </button>
                   )) : <div className="empty-state version-empty"><span className="empty-state__icon"><Icon name="clock" /></span><strong>还没有版本</strong><p>插入 AI 文本、选区改写或应用企划后，这里会留下可回退的快照。</p></div>}
                 </div>
-                <div className="check-foot"><span>最多保留 40 个版本</span><span>回退前会自动保存当前稿</span></div>
+                <div className="check-foot"><span>{versionScope === 'book' ? '全书最多每章 40 个版本' : '每章最多 40 个版本'}</span><span>回退前会自动保存当前稿</span></div>
               </div>
             )}
           </aside>
@@ -979,6 +1061,31 @@ export function StudioPage() {
               <section><header>当前正文 <span>{formatNumber(words)} 字</span></header><div className="version-text">{content || '（空章节）'}</div></section>
             </div>
             <footer className="modal__foot"><span className="modal__hint">恢复会覆盖当前正文；覆盖前会自动保存当前稿。</span><div className="modal__foot-actions"><button className="btn btn--ghost" type="button" onClick={() => setCompareVersion(null)}>关闭</button><button className="btn btn--primary" type="button" onClick={() => restoreVersion(compareVersion)}>恢复这一版</button></div></footer>
+          </div>
+        </div>
+      )}
+      {trashOpen && (
+        <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setTrashOpen(false); }}>
+          <div className="modal trash-modal" role="dialog" aria-modal="true" aria-label="回收站">
+            <header className="modal__head">
+              <div><p className="modal__eyebrow">章节回收站</p><h2>已删除的章节 <span className="trash-modal__count">{trashChapters.length}</span></h2></div>
+              <button className="icon-btn" type="button" onClick={() => setTrashOpen(false)}><Icon name="x" /></button>
+            </header>
+            <div className="trash-list">
+              {trashChapters.length ? trashChapters.map((chapter) => (
+                <article className="trash-item" key={chapter.id}>
+                  <div className="trash-item__body">
+                    <strong>{chapter.number} {chapter.title}</strong>
+                    <span>{formatNumber(chapter.words)} 字{chapter.deletedAt ? ` · ${new Date(chapter.deletedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 删除` : ''}</span>
+                  </div>
+                  <div className="trash-item__actions">
+                    <button className="btn btn--tiny btn--primary" type="button" disabled={Boolean(trashBusy)} onClick={() => void restoreTrashed(chapter)}>{trashBusy === chapter.id ? '恢复中…' : '恢复'}</button>
+                    <button className="btn btn--tiny btn--ghost" type="button" disabled={Boolean(trashBusy)} onClick={() => void purgeTrashed(chapter)}>彻底删除</button>
+                  </div>
+                </article>
+              )) : <div className="empty-state version-empty"><span className="empty-state__icon"><Icon name="trash" /></span><strong>回收站是空的</strong><p>删除章节后会先放在这里，恢复或彻底删除都由你决定。</p></div>}
+            </div>
+            <footer className="modal__foot"><span className="modal__hint">恢复后章节会回到原目录位置；彻底删除不可撤销。</span><div className="modal__foot-actions"><button className="btn btn--ghost" type="button" onClick={() => setTrashOpen(false)}>关闭</button></div></footer>
           </div>
         </div>
       )}

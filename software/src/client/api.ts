@@ -38,7 +38,13 @@ export const api = {
   createChapter: (projectId: string, input: { title?: string; volume?: string; number?: string }) =>
     request<{ chapter: Chapter }>(`/api/projects/${projectId}/chapters`, { method: 'POST', body: JSON.stringify(input) }),
   deleteChapter: (id: string) =>
-    request<{ ok: boolean; versions: number }>(`/api/chapters/${id}`, { method: 'DELETE' }),
+    request<{ ok: boolean; trashed?: boolean; versions: number }>(`/api/chapters/${id}`, { method: 'DELETE' }),
+  trashChapters: (projectId: string) =>
+    request<{ chapters: Chapter[] }>(`/api/projects/${projectId}/trash`),
+  restoreChapter: (id: string) =>
+    request<{ ok: boolean; chapter: Chapter; project: ProjectDetail }>(`/api/chapters/${id}/restore`, { method: 'POST' }),
+  purgeChapter: (id: string) =>
+    request<{ ok: boolean; versions: number }>(`/api/chapters/${id}/purge`, { method: 'DELETE' }),
   flushChapter: (id: string, patch: { content?: string; title?: string }) => {
     // pagehide 时普通 await 已来不及，用 keepalive 把最后一段输入发出去。
     try {
@@ -68,8 +74,10 @@ export const api = {
     request<{ plan: import('../shared/types').ProjectPlan }>(`/api/projects/${id}/plan`, { method: 'POST', signal }),
   applyPlan: (id: string, plan: import('../shared/types').ProjectPlan) =>
     request<{ project: ProjectDetail }>(`/api/projects/${id}/plan/apply`, { method: 'POST', body: JSON.stringify({ plan }) }),
-  versions: (projectId: string, chapterId: string) =>
-    request<{ versions: import('../shared/types').ChapterVersion[] }>(`/api/projects/${projectId}/versions?chapterId=${encodeURIComponent(chapterId)}`),
+  versions: (projectId: string, chapterId?: string) =>
+    request<{ versions: import('../shared/types').ChapterVersion[] }>(
+      `/api/projects/${projectId}/versions${chapterId ? `?chapterId=${encodeURIComponent(chapterId)}` : ''}`,
+    ),
   snapshotChapter: (chapterId: string, source: string, content?: string, title?: string) =>
     request<{ version: import('../shared/types').ChapterVersion }>(`/api/chapters/${chapterId}/versions`, { method: 'POST', body: JSON.stringify({ source, content, title }) }),
   restoreVersion: (chapterId: string, versionId: string) =>
@@ -111,10 +119,10 @@ export const api = {
   messages: (projectId: string, chapterId?: string | null) =>
     request<{ messages: ChatMessage[] }>(`/api/projects/${projectId}/messages${chapterId ? `?chapterId=${encodeURIComponent(chapterId)}` : ''}`),
   projects: () => request<{ projects: ProjectSummary[] }>('/api/projects'),
-  downloadProjectMarkdown: (id: string) =>
-    api.downloadFile(`/api/projects/${id}/export`, '作品.md'),
-  downloadProjectDocx: (id: string) =>
-    api.downloadFile(`/api/projects/${id}/export.docx`, '作品.docx'),
+  downloadProjectMarkdown: (id: string, chapterId?: string | null) =>
+    api.downloadFile(`/api/projects/${id}/export${chapterId ? `?chapterId=${encodeURIComponent(chapterId)}` : ''}`, '作品.md'),
+  downloadProjectDocx: (id: string, chapterId?: string | null) =>
+    api.downloadFile(`/api/projects/${id}/export.docx${chapterId ? `?chapterId=${encodeURIComponent(chapterId)}` : ''}`, '作品.docx'),
   downloadProjectBundle: (id: string) =>
     api.downloadFile(`/api/projects/${id}/bundle`, '作品.inkquay.json'),
   projectBundle: (id: string) => request<ProjectBundle>(`/api/projects/${id}/bundle`),

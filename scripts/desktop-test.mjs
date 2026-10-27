@@ -13,7 +13,9 @@ delete env.ELECTRON_RUN_AS_NODE;
 
 async function launch() {
   const app = await electron.launch({
-    args: [path.join(root, 'desktop/main.cjs')],
+    args: process.platform === 'linux'
+      ? ['--no-sandbox', '--disable-gpu', path.join(root, 'desktop/main.cjs')]
+      : [path.join(root, 'desktop/main.cjs')],
     cwd: root,
     env,
     timeout: 60000,

@@ -1,0 +1,49 @@
+name: Platform smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'software/**'
+      - 'desktop/**'
+      - 'scripts/**'
+      - 'package.json'
+      - '.github/workflows/platform-smoke.yml'
+
+jobs:
+  linux:
+    name: Linux desktop E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C software install --frozen-lockfile
+      - run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0 libnss3 libasound2t64
+      - run: pnpm desktop:prepare
+      - run: xvfb-run -a pnpm desktop:test
+
+  windows:
+    name: Windows desktop E2E
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C software install --frozen-lockfile
+      - run: pnpm desktop:prepare
+      - run: pnpm desktop:test
