@@ -1,0 +1,132 @@
+{
+  "runId": "优化项目-查漏补缺-004044",
+  "roles": [
+    "pm",
+    "architect",
+    "researcher",
+    "ui",
+    "backend",
+    "frontend",
+    "dba",
+    "sec",
+    "reviewer",
+    "qa",
+    "devops",
+    "docs"
+  ],
+  "members": {},
+  "createdAt": "2026-10-27T00:40:44.803Z",
+  "tier": "standard",
+  "agents": {
+    "pm": {
+      "name": "Eric",
+      "color": "#5b8def",
+      "initial": "E"
+    },
+    "architect": {
+      "name": "Lee",
+      "color": "#d05a9c",
+      "initial": "L"
+    },
+    "researcher": {
+      "name": "Taylor",
+      "color": "#c04f4f",
+      "initial": "T"
+    },
+    "ui": {
+      "name": "Felix",
+      "color": "#22b07d",
+      "initial": "F"
+    },
+    "backend": {
+      "name": "Jay",
+      "color": "#7a5ef0",
+      "initial": "J"
+    },
+    "frontend": {
+      "name": "Robin",
+      "color": "#8a7a3c",
+      "initial": "R"
+    },
+    "dba": {
+      "name": "Jimmy",
+      "color": "#e0913c",
+      "initial": "J"
+    },
+    "sec": {
+      "name": "Bill",
+      "color": "#3aa6b9",
+      "initial": "B"
+    },
+    "reviewer": {
+      "name": "James",
+      "color": "#5b8def",
+      "initial": "J"
+    },
+    "qa": {
+      "name": "Jason",
+      "color": "#d05a9c",
+      "initial": "J"
+    },
+    "devops": {
+      "name": "Eva",
+      "color": "#c04f4f",
+      "initial": "E"
+    },
+    "docs": {
+      "name": "Leo",
+      "color": "#22b07d",
+      "initial": "L"
+    }
+  },
+  "models": {
+    "pm": {
+      "tier": "heavy",
+      "model": "deepseek-flash"
+    },
+    "architect": {
+      "tier": "heavy",
+      "model": "deepseek-flash"
+    },
+    "researcher": {
+      "tier": "light",
+      "model": "deepseek-flash"
+    },
+    "ui": {
+      "tier": "light",
+      "model": "deepseek-flash"
+    },
+    "backend": {
+      "tier": "light",
+      "model": "deepseek-flash"
+    },
+    "frontend": {
+      "tier": "light",
+      "model": "deepseek-flash"
+    },
+    "dba": {
+      "tier": "heavy",
+      "model": "deepseek-flash"
+    },
+    "sec": {
+      "tier": "heavy",
+      "model": "deepseek-flash"
+    },
+    "reviewer": {
+      "tier": "heavy",
+      "model": "deepseek-flash"
+    },
+    "qa": {
+      "tier": "light",
+      "model": "deepseek-flash"
+    },
+    "devops": {
+      "tier": "light",
+      "model": "deepseek-flash"
+    },
+    "docs": {
+      "tier": "light",
+      "model": "deepseek-flash"
+    }
+  }
+}

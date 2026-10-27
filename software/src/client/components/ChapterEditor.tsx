@@ -20,7 +20,7 @@ export function ChapterEditor({
 }: {
   chapter: Chapter;
   onChange: (content: string) => void;
-  onSelectionChange?: (text: string) => void;
+  onSelectionChange?: (text: string, range: Range | null) => void;
   editorRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const lastId = useRef<string>('');
@@ -38,7 +38,8 @@ export function ChapterEditor({
     if (!selection || selection.rangeCount === 0 || !onSelectionChange) return;
     const anchor = selection.anchorNode;
     if (anchor && editorRef.current?.contains(anchor)) {
-      onSelectionChange(selection.toString().trim());
+      const range = selection.getRangeAt(0).cloneRange();
+      onSelectionChange(selection.toString().trim(), range);
     }
   }
 

@@ -23,13 +23,14 @@ export function CodexPage() {
   const [editingForeshadow, setEditingForeshadow] = useState<Foreshadow | 'new' | null>(null);
   const [foreshadowForm, setForeshadowForm] = useState({ name: '', planted: '', payoff: '', status: '待回收' });
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     api.project(projectId).then(({ project: next }) => {
       setProject(next);
       rememberProject(next.id);
       setSelectedId(next.characters[0]?.id || '');
-    });
+    }).catch((err) => setLoadError(err instanceof Error ? err.message : '加载失败'));
   }, [projectId, rememberProject]);
 
   function openEditor(character?: Character) {
@@ -74,6 +75,32 @@ export function CodexPage() {
     }
   }
 
+  async function removeCharacter(character: Character) {
+    if (!window.confirm(`确定删除人物「${character.name}」？此操作不可恢复。`)) return;
+    try {
+      await api.deleteCharacter(character.id);
+      const remaining = (project?.characters || []).filter((c) => c.id !== character.id);
+      setProject((prev) => prev ? { ...prev, characters: remaining } : prev);
+      setSelectedId(remaining[0]?.id || '');
+      setEditing(null);
+      toast('人物已删除');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '删除人物失败', 'warn');
+    }
+  }
+
+  async function removeForeshadow(item: Foreshadow) {
+    if (!window.confirm(`确定删除伏笔「${item.name}」？此操作不可恢复。`)) return;
+    try {
+      await api.deleteForeshadow(item.id);
+      setProject((prev) => prev ? { ...prev, foreshadows: prev.foreshadows.filter((f) => f.id !== item.id) } : prev);
+      setEditingForeshadow(null);
+      toast('伏笔已删除');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '删除伏笔失败', 'warn');
+    }
+  }
+
   async function saveCharacter() {
     if (!project || !editing) return;
     if (!form.name.trim()) { toast('人物名不能为空', 'warn'); return; }
@@ -102,7 +129,12 @@ export function CodexPage() {
     }
   }
 
-  if (!project) return <div className="loading-screen"><span className="brand__seal">私</span><p>正在打开设定库…</p></div>;
+  if (!project) return (
+    <div className={`loading-screen${loadError ? ' loading-screen--error' : ''}`}>
+      <span className="brand__seal">私</span>
+      {loadError ? <><strong>打不开设定库</strong><p>{loadError}</p><Link className="btn btn--ghost btn--sm" to="/">返回书房</Link></> : <p>正在打开设定库…</p>}
+    </div>
+  );
   const selected = project.characters.find((c) => c.id === selectedId) || project.characters[0];
   const filtered = project.characters.filter((c) => !query || `${c.name}${c.role}${c.tags.join('')}`.includes(query));
   const topbar = (
@@ -184,7 +216,7 @@ export function CodexPage() {
               <div className="form-block"><label className="form-label">动机与底色</label><textarea className="text-input text-input--area" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
               <div className="form-block"><label className="form-label">人物秘密</label><textarea className="text-input text-input--area" rows={2} value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} /></div>
             </div>
-            <footer className="modal__foot"><span className="modal__hint">人物会进入 AI 写作上下文。</span><div className="modal__foot-actions"><button className="btn btn--ghost" type="button" onClick={() => setEditing(null)}>取消</button><button className="btn btn--primary" type="button" disabled={saving} onClick={saveCharacter}>{saving ? '保存中…' : '保存人物'}</button></div></footer>
+            <footer className="modal__foot"><span className="modal__hint">人物会进入 AI 写作上下文。</span><div className="modal__foot-actions">{editing !== 'new' ? <button className="btn btn--ghost insight-form__danger" type="button" onClick={() => void removeCharacter(editing)}><Icon name="trash" /> 删除</button> : null}<button className="btn btn--ghost" type="button" onClick={() => setEditing(null)}>取消</button><button className="btn btn--primary" type="button" disabled={saving} onClick={saveCharacter}>{saving ? '保存中…' : '保存人物'}</button></div></footer>
           </div>
         </div>
       )}
@@ -197,7 +229,7 @@ export function CodexPage() {
               <div className="form-row"><div className="form-block"><label className="form-label">埋设位置</label><input className="text-input" value={foreshadowForm.planted} onChange={(e) => setForeshadowForm({ ...foreshadowForm, planted: e.target.value })} placeholder="第 7 章" /></div><div className="form-block"><label className="form-label">计划回收</label><input className="text-input" value={foreshadowForm.payoff} onChange={(e) => setForeshadowForm({ ...foreshadowForm, payoff: e.target.value })} placeholder="第 14 章" /></div></div>
               <div className="form-block"><label className="form-label">状态</label><select className="text-input" value={foreshadowForm.status} onChange={(e) => setForeshadowForm({ ...foreshadowForm, status: e.target.value })}><option>待回收</option><option>规划中</option><option>已回收</option><option>已放弃</option></select></div>
             </div>
-            <footer className="modal__foot"><span className="modal__hint">伏笔会进入 AI 上下文，帮助模型避免遗忘。</span><div className="modal__foot-actions"><button className="btn btn--ghost" type="button" onClick={() => setEditingForeshadow(null)}>取消</button><button className="btn btn--primary" type="button" onClick={saveForeshadow}>保存伏笔</button></div></footer>
+            <footer className="modal__foot"><span className="modal__hint">伏笔会进入 AI 上下文，帮助模型避免遗忘。</span><div className="modal__foot-actions">{editingForeshadow !== 'new' ? <button className="btn btn--ghost insight-form__danger" type="button" onClick={() => void removeForeshadow(editingForeshadow)}><Icon name="trash" /> 删除</button> : null}<button className="btn btn--ghost" type="button" onClick={() => setEditingForeshadow(null)}>取消</button><button className="btn btn--primary" type="button" onClick={saveForeshadow}>保存伏笔</button></div></footer>
           </div>
         </div>
       )}

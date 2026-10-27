@@ -38,6 +38,7 @@
     },
     "files": [
       "desktop/main.cjs",
+      "desktop/preload.cjs",
       "package.json"
     ],
     "extraResources": [

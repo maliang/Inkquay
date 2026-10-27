@@ -5,7 +5,7 @@ type Row = Record<string, unknown>;
 
 function insert(db: DatabaseSync, table: string, row: Row) {
   const keys = Object.keys(row);
-  const sql = `INSERT INTO ${table} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`;
+  const sql = `INSERT OR IGNORE INTO ${table} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`;
   db.prepare(sql).run(...keys.map((k) => row[k] as any));
 }
 
@@ -67,6 +67,8 @@ export function seedDatabase(db: DatabaseSync) {
     });
   }
 
+  db.prepare("INSERT OR IGNORE INTO app_meta (key, value) VALUES ('seeded_at', ?)").run(stamp);
+
   const appSettings = {
     profile: { name: '', signature: '' },
     onboarding: { completed: false },
@@ -76,5 +78,5 @@ export function seedDatabase(db: DatabaseSync) {
     defaultModel: null,
     fallbackModel: null,
   };
-  insert(db, 'settings', { key: 'app', value: JSON.stringify(appSettings) });
+  db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('app', ?)").run(JSON.stringify(appSettings));
 }

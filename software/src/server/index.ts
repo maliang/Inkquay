@@ -17,8 +17,15 @@ import {
   completeOnboarding,
   applyProjectPlan,
   deleteBeat,
+  deleteChapter,
+  deleteCharacter,
+  deleteForeshadow,
   deleteProject,
+  deleteScene,
+  deleteShot,
+  exportProjectBundle,
   exportProjectMarkdown,
+  importProjectBundle,
   getChapter,
   getProjectDetail,
   getSettings,
@@ -41,14 +48,14 @@ import {
   updateShot,
 } from './repository.ts';
 import { streamAssistant } from './ai.ts';
-import type { AiStreamRequest, AppSettings, ChapterPatch, ModelInfo } from '../shared/types.ts';
+import type { AiStreamRequest, AppSettings, ChapterPatch, ModelInfo, ProjectBundle } from '../shared/types.ts';
 
 const app = express();
 const port = Number(process.env.PORT || 8787);
 
 migrate();
 
-app.use(express.json({ limit: '3mb' }));
+app.use(express.json({ limit: '25mb' }));
 app.use((req, _res, next) => {
   if (req.path.startsWith('/api')) console.log(`[api] ${req.method} ${req.path}`);
   next();
@@ -161,6 +168,12 @@ app.patch('/api/chapters/:id', (req, res) => {
   res.json({ chapter });
 });
 
+app.delete('/api/chapters/:id', (req, res) => {
+  const result = deleteChapter(req.params.id);
+  if (!result) return res.status(404).json({ error: '章节不存在' });
+  res.json({ ok: true, ...result });
+});
+
 app.patch('/api/characters/:id', (req, res) => {
   const character = updateCharacter(req.params.id, req.body || {});
   if (!character) return res.status(404).json({ error: '人物不存在' });
@@ -172,6 +185,11 @@ app.post('/api/projects/:id/characters', (req, res) => {
   if (!req.body?.name?.trim()) return res.status(400).json({ error: '人物名不能为空' });
   const character = createCharacter(req.params.id, { ...req.body, name: req.body.name.trim() });
   res.status(201).json({ character });
+});
+
+app.delete('/api/characters/:id', (req, res) => {
+  if (!deleteCharacter(req.params.id)) return res.status(404).json({ error: '人物不存在' });
+  res.json({ ok: true });
 });
 
 app.patch('/api/beats/:id', (req, res) => {
@@ -212,6 +230,11 @@ app.post('/api/projects/:id/shots', (req, res) => {
   res.status(201).json({ shot });
 });
 
+app.delete('/api/shots/:id', (req, res) => {
+  if (!deleteShot(req.params.id)) return res.status(404).json({ error: '分镜不存在' });
+  res.json({ ok: true });
+});
+
 app.post('/api/scenes/:id/shots/generate', (req, res) => {
   const shots = generateShotsForScene(req.params.id);
   if (!shots.length) return res.status(404).json({ error: '场次不存在' });
@@ -222,6 +245,11 @@ app.patch('/api/scenes/:id', (req, res) => {
   const scene = updateScene(req.params.id, req.body || {});
   if (!scene) return res.status(404).json({ error: '场次不存在' });
   res.json({ scene });
+});
+
+app.delete('/api/scenes/:id', (req, res) => {
+  if (!deleteScene(req.params.id)) return res.status(404).json({ error: '场次不存在' });
+  res.json({ ok: true });
 });
 
 app.post('/api/projects/:id/scenes', (req, res) => {
@@ -243,6 +271,11 @@ app.post('/api/projects/:id/foreshadows', (req, res) => {
   if (!req.body?.name?.trim()) return res.status(400).json({ error: '伏笔名不能为空' });
   const foreshadow = createForeshadow(req.params.id, { ...req.body, name: req.body.name.trim() });
   res.status(201).json({ foreshadow });
+});
+
+app.delete('/api/foreshadows/:id', (req, res) => {
+  if (!deleteForeshadow(req.params.id)) return res.status(404).json({ error: '伏笔不存在' });
+  res.json({ ok: true });
 });
 
 app.get('/api/projects/:id/messages', (req, res) => {
@@ -308,15 +341,38 @@ app.post('/api/providers/:id/test', async (req, res) => {
 app.get('/api/projects/:id/export.docx', async (req, res) => {
   const project = getProjectDetail(req.params.id);
   if (!project) return res.status(404).json({ error: '作品不存在' });
+  const hasBody = project.chapters.some((chapter) => chapter.content.trim()) || project.scenes.some((scene) => scene.content.trim());
+  if (!hasBody) return res.status(400).json({ error: '这本还没有可导出的正文' });
   const buffer = await buildProjectDocx(project);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`${project.title}.docx`)}`);
   res.send(buffer);
 });
 
+app.get('/api/projects/:id/bundle', (req, res) => {
+  const bundle = exportProjectBundle(req.params.id);
+  if (!bundle) return res.status(404).json({ error: '作品不存在' });
+  const safeName = bundle.project.title.replace(/[\\/:*?"<>|]/g, '_');
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(safeName)}.inkquay.json`);
+  res.send(JSON.stringify(bundle, null, 2));
+});
+
+app.post('/api/projects/import', (req, res) => {
+  try {
+    const bundle = (req.body?.bundle || req.body) as ProjectBundle;
+    const project = importProjectBundle(bundle);
+    res.status(201).json({ project });
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : '导入失败' });
+  }
+});
+
 app.get('/api/projects/:id/export', (req, res) => {
   const project = getProjectDetail(req.params.id);
   if (!project) return res.status(404).json({ error: '作品不存在' });
+  const hasBody = project.chapters.some((chapter) => chapter.content.trim()) || project.scenes.some((scene) => scene.content.trim());
+  if (!hasBody) return res.status(400).json({ error: '这本还没有可导出的正文' });
   const markdown = exportProjectMarkdown(req.params.id);
   if (!markdown) return res.status(404).json({ error: '作品不存在' });
   const safeName = project.title.replace(/[\\/:*?"<>|]/g, '_');
@@ -338,7 +394,7 @@ app.post('/api/ai/stream', async (req, res) => {
   res.flushHeaders?.();
 
   const controller = new AbortController();
-  const onClose = () => controller.abort();
+  const onClose = () => { if (!res.writableEnded) controller.abort(); };
   res.on('close', onClose);
   try {
     await streamAssistant(res, {
@@ -349,6 +405,7 @@ app.post('/api/ai/stream', async (req, res) => {
       modelId: body.modelId || "",
       mode: body.mode,
       regenerate: Boolean(body.regenerate),
+      replaceMessageId: body.replaceMessageId,
       signal: controller.signal,
     });
   } catch (error) {

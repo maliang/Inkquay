@@ -18,6 +18,7 @@ export function OutlinePage() {
   const [selected, setSelected] = useState<OutlineBeat | null>(null);
   const [draft, setDraft] = useState({ title: '', chapterNo: 1, status: '待写', summary: '', tags: '' });
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const draggingRef = useRef<string | null>(null);
 
@@ -26,7 +27,7 @@ export function OutlinePage() {
       setProject(next);
       rememberProject(next.id);
       setSelected(next.outline.beats.find((b) => b.status === '初稿') || next.outline.beats[0] || null);
-    });
+    }).catch((err) => setLoadError(err instanceof Error ? err.message : '加载失败'));
   }, [projectId, rememberProject]);
 
   useEffect(() => {
@@ -149,7 +150,12 @@ export function OutlinePage() {
     beats: project?.outline.beats.filter((b) => b.actId === act.id) || [],
   })), [project]);
 
-  if (!project) return <div className="loading-screen"><span className="brand__seal">私</span><p>正在打开故事结构…</p></div>;
+  if (!project) return (
+    <div className={`loading-screen${loadError ? ' loading-screen--error' : ''}`}>
+      <span className="brand__seal">私</span>
+      {loadError ? <><strong>打不开故事结构</strong><p>{loadError}</p><Link className="btn btn--ghost btn--sm" to="/">返回书房</Link></> : <p>正在打开故事结构…</p>}
+    </div>
+  );
   const written = project.chapters.filter((c) => c.content).length;
   const topbar = (
     <>

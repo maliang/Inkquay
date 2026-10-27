@@ -158,16 +158,26 @@ export function migrate() {
       content TEXT NOT NULL,
       provider_id TEXT,
       model_id TEXT,
+      status TEXT NOT NULL DEFAULT 'complete',
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_messages_project ON ai_messages(project_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS app_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
 
-  const row = db.prepare('SELECT COUNT(*) AS count FROM projects').get() as { count: number };
-  if (!row || row.count === 0) {
-    seedDatabase(db);
-    console.log('[db] seeded demo data');
+  // 老库补列：保留用户已有数据，避免升级后丢历史消息。
+  const messageColumns = db.prepare('PRAGMA table_info(ai_messages)').all() as Array<{ name: string }>;
+  if (!messageColumns.some((column) => column.name === 'status')) {
+    db.exec("ALTER TABLE ai_messages ADD COLUMN status TEXT NOT NULL DEFAULT 'complete'");
   }
+
+  // seedDatabase 现在是幂等的（INSERT OR IGNORE），每次启动都执行。
+  // 绝不能再根据 projects 数量判断首启：用户清空作品后重启必须保持空库。
+  seedDatabase(db);
 }
 
 export { countWords, now, uid } from './utils.ts';

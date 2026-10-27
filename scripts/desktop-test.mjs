@@ -53,7 +53,15 @@ try {
   await first.window.keyboard.type('桌面版持久化');
   await first.window.waitForTimeout(1300);
   await first.window.screenshot({ path: path.join(root, 'software/screenshots/91-desktop-studio.png') });
-  await first.app.close();
+  await first.window.keyboard.press('End');
+  await first.window.keyboard.type('关窗也落盘');
+  // 模拟用户点窗口关闭按钮；Playwright 的 app.close()/window.close()
+  // 会直接结束进程，绕过 BrowserWindow 的 close 事件与 flush 握手。
+  await first.app.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].close(); });
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Electron 关窗后进程未退出')), 8000);
+    first.app.process().once('exit', () => { clearTimeout(timer); resolve(); });
+  });
 
   second = await launch();
   const port = new URL(second.window.url()).port;
@@ -61,13 +69,17 @@ try {
   await second.window.waitForSelector('.editor');
   const text = await second.window.locator('.editor').innerText();
   assert.ok(text.includes('桌面版持久化'), 'desktop data persists across restarts');
+  assert.ok(text.includes('关窗也落盘'), 'closing immediately after typing still flushes the draft');
   assert.equal(await second.window.locator('.onboarding').count(), 0, 'onboarding is not shown again');
   console.log('Desktop E2E passed.');
 } catch (error) {
   console.error('Desktop E2E failed:', error);
   process.exitCode = 1;
 } finally {
-  if (first?.app) await first.app.close().catch(() => {});
-  if (second?.app) await second.app.close().catch(() => {});
+  // 测试断言已结束，不再走 close 握手，直接结束 Electron，避免 Playwright 等待。
+  for (const app of [first?.app, second?.app]) {
+    try { app?.process().kill('SIGKILL'); } catch { /* already exited */ }
+  }
+  await new Promise((resolve) => setTimeout(resolve, 300));
   fs.rmSync(dataDir, { recursive: true, force: true });
 }

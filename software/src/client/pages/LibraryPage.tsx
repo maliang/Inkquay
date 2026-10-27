@@ -6,10 +6,18 @@ import { Cover } from '../components/Cover';
 import { Icon } from '../components/Icon';
 import { NewProjectModal } from '../components/NewProjectModal';
 import { ProjectSettingsModal } from '../components/ProjectSettingsModal';
-import type { ProjectSummary } from '../../shared/types';
+import { useToast } from '../components/Toast';
+import { api } from '../api';
+import type { ProjectBundle, ProjectSummary } from '../../shared/types';
 
 const typeLabel: Record<string, string> = { novel: '长篇小说', short: '短篇小说', screenplay: '电影剧本', series: '剧集大纲' };
 const typeFilter: Record<string, string> = { novel: 'novel', short: 'short', screenplay: 'script', series: 'script' };
+const inspirations = [
+  '一个替人写遗书的代笔人，收到了一封写给自己的遗书，落款日期是明天。',
+  '如果一个人每天醒来都会忘记昨天，但只有一个人记得他，会发生什么？',
+  '一座小城连续下了四十天雨，邮差却每天送出一封没有寄件人的信。',
+  '两个陌生人被困在同一班末班地铁里，广播报出的却是十年前的站名。',
+];
 
 function formatNumber(n: number) {
   return n.toLocaleString('en-US');
@@ -24,7 +32,11 @@ export function LibraryPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [settingsProject, setSettingsProject] = useState<ProjectSummary | null>(null);
   const [newType, setNewType] = useState('novel');
-  const [inspiration, setInspiration] = useState('如果访客带来的皮箱里，装的不是钱，而是一整箱从未寄出的信——故事会往哪里走？');
+  const [newPremise, setNewPremise] = useState('');
+  const [inspiration, setInspiration] = useState(() => inspirations[Math.floor(Math.random() * inspirations.length)]);
+  const [importing, setImporting] = useState(false);
+  const { toast } = useToast();
+  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { void reload(); }, [reload]);
 
@@ -55,9 +67,36 @@ export function LibraryPage() {
     });
   }, [projects, filter, query]);
 
-  function openNew(type = 'novel') {
+  function openNew(type = 'novel', premise = '') {
     setNewType(type);
+    setNewPremise(premise);
     setNewOpen(true);
+  }
+
+  function nextInspiration() {
+    const current = inspirations.indexOf(inspiration);
+    setInspiration(inspirations[(current + 1 + inspirations.length) % inspirations.length]);
+  }
+
+  async function importBundle(file: File) {
+    if (importing) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const bundle = JSON.parse(text) as ProjectBundle;
+      if (bundle?.format !== 'inkquay.project' || !bundle.project?.title) {
+        throw new Error('不是有效的 Inkquay 项目包');
+      }
+      const { project } = await api.importProject(bundle);
+      await reload();
+      toast(`已导入《${project.title}》`);
+      navigate(project.type === 'screenplay' ? `/project/${project.id}/screenplay` : `/project/${project.id}`);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '导入失败', 'warn');
+    } finally {
+      setImporting(false);
+      if (importRef.current) importRef.current.value = '';
+    }
   }
 
   const topbar = (
@@ -70,8 +109,12 @@ export function LibraryPage() {
       </div>
       <div className="topbar-tabs" />
       <div className="topbar-actions">
-        <span className="tb-save"><i />本地数据库 · 已连接</span>
+        <span className="tb-save"><i style={{ background: error ? 'var(--gold)' : 'var(--jade)' }} />{error ? '本地数据库 · 未连接' : '本地数据库 · 已连接'}</span>
         <div className="tb-divider" />
+        <input ref={importRef} type="file" accept=".json,.inkquay.json,application/json" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) void importBundle(file); }} />
+        <button className="btn btn--ghost btn--sm" type="button" disabled={importing} onClick={() => importRef.current?.click()}>
+          <Icon name="download" /> {importing ? '导入中…' : '导入项目包'}
+        </button>
         <button className="btn btn--primary btn--sm" type="button" onClick={() => openNew()}>
           <Icon name="plus" /> 新建作品
         </button>
@@ -92,7 +135,7 @@ export function LibraryPage() {
             <div className="lib-head__actions">
               <label className="search-field">
                 <Icon name="search" />
-                <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索作品、章节、人物" />
+                <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索作品标题、简介或类型" />
                 <kbd>⌘ K</kbd>
               </label>
               <button className="btn btn--primary" type="button" onClick={() => openNew()}>
@@ -112,7 +155,7 @@ export function LibraryPage() {
               <p className="first-run__sub">先建一部作品，写下一句话；AI 会读着你的上下文，帮你往下写。</p>
               <div className="first-run__steps">
                 <div><span>01</span><strong>新建第一部作品</strong><em>长篇、短篇或剧本，先有容器</em></div>
-                <div><span>02</span><strong>让 AI 起个头</strong><em>默认本地演示模型，不需要 Key</em></div>
+                <div><span>02</span><strong>让 AI 起个头</strong><em>用你已经配置好的模型起草</em></div>
                 <div><span>03</span><strong>你来删改与定稿</strong><em>AI 负责草稿，作者负责判断</em></div>
               </div>
               <div className="first-run__actions"><button className="btn btn--primary" type="button" onClick={() => openNew()}><Icon name="plus" /> 新建第一部作品</button><Link className="btn btn--ghost" to="/settings"><Icon name="server" /> 先配置模型</Link></div>
@@ -140,7 +183,7 @@ export function LibraryPage() {
                 <article className="stat-card">
                   <div className="stat-card__top"><span className="stat-card__label"><Icon name="spark" /> AI 供应商</span><span className="delta delta--up">已连接 {connected}</span></div>
                   <div className="stat-card__value">{providers.length}<span>个</span></div>
-                  <div className="stat-card__foot"><span>含本地演示模型</span><Link className="text-btn" to="/settings">管理 <Icon name="arrow-right" /></Link></div>
+                  <div className="stat-card__foot"><span>在设置里管理 Key 与模型</span><Link className="text-btn" to="/settings">管理 <Icon name="arrow-right" /></Link></div>
                 </article>
               </div>
 
@@ -154,7 +197,7 @@ export function LibraryPage() {
                     <div className="continue-card__chapter">
                       <span>已写</span><strong>{hero.chapterCount} 章</strong><span className="muted">{formatNumber(hero.totalWords)} 字</span>
                     </div>
-                    <blockquote>“门外的男人没有撑伞。雨水顺着他的帽檐往下滴，在门槛前积成一小片深色的海。”</blockquote>
+                    <blockquote>“{hero.description || '这部作品还没有写简介，继续写下去，故事会自己长出来。'}”</blockquote>
                     <div className="continue-card__foot">
                       <div className="progress-block">
                         <div className="pbar pbar--wide"><i style={{ width: `${Math.max(1, Math.round((hero.totalWords / hero.goalWords) * 100))}%` }} /></div>
@@ -263,8 +306,8 @@ export function LibraryPage() {
                     <div className="inspiration-card__head"><span><Icon name="spark" /> 灵感胶囊</span><span className="inspiration-card__badge">AI</span></div>
                     <p className="inspiration-card__quote">{inspiration}</p>
                     <div className="inspiration-card__foot">
-                      <button className="chip" type="button" onClick={() => setInspiration('让林雾在关键时刻说一句只有沈鹭才知道的暗号，但她坚持说那是巧合。')}><Icon name="refresh" /> 换一个</button>
-                      <span className="text-btn">展开推演 <Icon name="arrow-right" /></span>
+                      <button className="chip" type="button" onClick={nextInspiration}><Icon name="refresh" /> 换一个</button>
+                      <button className="text-btn" type="button" onClick={() => openNew('novel', inspiration)} title="用这句话作为灵感，新建一部作品">用它开一本 <Icon name="arrow-right" /></button>
                     </div>
                   </section>
                 </aside>
@@ -273,7 +316,7 @@ export function LibraryPage() {
           )}
         </div>
       </section>
-      {newOpen && <NewProjectModal initialType={newType} onClose={() => setNewOpen(false)} />}
+      {newOpen && <NewProjectModal initialType={newType} initialPremise={newPremise} onClose={() => setNewOpen(false)} />}
       {settingsProject && <ProjectSettingsModal project={settingsProject} onClose={() => setSettingsProject(null)} />}
     </AppShell>
   );

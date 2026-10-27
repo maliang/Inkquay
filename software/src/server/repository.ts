@@ -11,6 +11,7 @@ import type {
   ModelInfo,
   OutlineAct,
   OutlineBeat,
+  ProjectBundle,
   ProjectDetail,
   ProjectSummary,
   ProviderInfo,
@@ -406,19 +407,29 @@ export async function testProviderConnection(id: string): Promise<{ ok: boolean;
 
 export function listMessages(projectId: string, chapterId?: string | null): ChatMessage[] {
   const rows = chapterId
-    ? db.prepare('SELECT * FROM ai_messages WHERE project_id = ? AND (chapter_id = ? OR chapter_id IS NULL) ORDER BY created_at ASC').all(projectId, chapterId)
-    : db.prepare('SELECT * FROM ai_messages WHERE project_id = ? ORDER BY created_at ASC').all(projectId);
+    ? db.prepare('SELECT * FROM ai_messages WHERE project_id = ? AND chapter_id = ? ORDER BY created_at ASC').all(projectId, chapterId)
+    : db.prepare('SELECT * FROM ai_messages WHERE project_id = ? AND chapter_id IS NULL ORDER BY created_at ASC').all(projectId);
   return (rows as Row[]).map((r) => ({
-    id: r.id, projectId: r.project_id, chapterId: r.chapter_id, role: r.role, content: r.content, createdAt: r.created_at,
+    id: r.id, projectId: r.project_id, chapterId: r.chapter_id, role: r.role, content: r.content,
+    status: (r.status as 'complete' | 'aborted') || 'complete', createdAt: r.created_at,
   }));
 }
 
-export function saveMessage(input: { projectId: string; chapterId?: string | null; role: 'user' | 'assistant'; content: string; providerId?: string; modelId?: string }): ChatMessage {
+export function saveMessage(input: {
+  projectId: string; chapterId?: string | null; role: 'user' | 'assistant'; content: string;
+  providerId?: string; modelId?: string; status?: 'complete' | 'aborted';
+}): ChatMessage {
   const id = uid('msg');
   const createdAt = now();
-  db.prepare('INSERT INTO ai_messages (id, project_id, chapter_id, role, content, provider_id, model_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(id, input.projectId, input.chapterId || null, input.role, input.content, input.providerId || null, input.modelId || null, createdAt);
-  return { id, projectId: input.projectId, chapterId: input.chapterId || null, role: input.role, content: input.content, createdAt };
+  const status = input.status || 'complete';
+  db.prepare('INSERT INTO ai_messages (id, project_id, chapter_id, role, content, provider_id, model_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(id, input.projectId, input.chapterId || null, input.role, input.content, input.providerId || null, input.modelId || null, status, createdAt);
+  return { id, projectId: input.projectId, chapterId: input.chapterId || null, role: input.role, content: input.content, status, createdAt };
+}
+
+export function deleteMessage(projectId: string, messageId: string): boolean {
+  const result = db.prepare('DELETE FROM ai_messages WHERE id = ? AND project_id = ?').run(messageId, projectId);
+  return Number(result.changes) > 0;
 }
 
 export function buildWritingContext(projectId: string, chapterId: string | null): string {
@@ -428,8 +439,10 @@ export function buildWritingContext(projectId: string, chapterId: string | null)
   const recent = project.chapters.filter((c) => c.content).slice(-3);
   const beats = project.outline.beats.slice(0, 12);
   const characters = project.characters.slice(0, 8);
+  const prefs = getSettings().prefs;
   return [
     `作品：《${project.title}》｜类型：${project.type}｜题材：${project.genre}`,
+    `写作偏好：${prefs.pov}｜${prefs.style}｜单次目标 ${prefs.aiLength}`,
     project.description ? `故事梗概：${project.description}` : '',
     `当前章节：${chapter ? `${chapter.volume} ${chapter.number} ${chapter.title}` : '未指定'}`,
     chapter?.content ? `当前正文（节选）：\n${chapter.content.slice(-4000)}` : '',
@@ -644,6 +657,176 @@ export function deleteProject(id: string): boolean {
   if (!row) return false;
   db.prepare('DELETE FROM projects WHERE id = ?').run(id);
   return true;
+}
+
+export function deleteChapter(id: string): { projectId: string; versions: number } | null {
+  const chapter = getChapter(id);
+  if (!chapter) return null;
+  const row = db.prepare('SELECT COUNT(*) AS count FROM chapter_versions WHERE chapter_id = ?').get(id) as Row;
+  db.prepare('DELETE FROM chapters WHERE id = ?').run(id);
+  db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now(), chapter.projectId);
+  recalculateProjectWords(chapter.projectId);
+  return { projectId: chapter.projectId, versions: Number(row.count) || 0 };
+}
+
+export function deleteCharacter(id: string): string | null {
+  const row = db.prepare('SELECT project_id FROM characters WHERE id = ?').get(id) as Row | undefined;
+  if (!row) return null;
+  db.prepare('DELETE FROM characters WHERE id = ?').run(id);
+  return String(row.project_id);
+}
+
+export function deleteScene(id: string): string | null {
+  const row = db.prepare('SELECT project_id FROM scenes WHERE id = ?').get(id) as Row | undefined;
+  if (!row) return null;
+  db.prepare('DELETE FROM scenes WHERE id = ?').run(id);
+  return String(row.project_id);
+}
+
+export function deleteShot(id: string): string | null {
+  const row = db.prepare('SELECT project_id FROM shots WHERE id = ?').get(id) as Row | undefined;
+  if (!row) return null;
+  db.prepare('DELETE FROM shots WHERE id = ?').run(id);
+  return String(row.project_id);
+}
+
+export function deleteForeshadow(id: string): string | null {
+  const row = db.prepare('SELECT project_id FROM foreshadows WHERE id = ?').get(id) as Row | undefined;
+  if (!row) return null;
+  db.prepare('DELETE FROM foreshadows WHERE id = ?').run(id);
+  return String(row.project_id);
+}
+
+export function exportProjectBundle(projectId: string): ProjectBundle | null {
+  const project = getProjectDetail(projectId);
+  if (!project) return null;
+  return {
+    format: 'inkquay.project',
+    version: 1,
+    exportedAt: now(),
+    project: {
+      title: project.title,
+      type: project.type,
+      genre: project.genre,
+      description: project.description,
+      cover: project.cover,
+      status: project.status,
+      goalWords: project.goalWords,
+      chapters: project.chapters,
+      characters: project.characters,
+      outline: project.outline,
+      scenes: project.scenes,
+      shots: project.shots,
+      foreshadows: project.foreshadows,
+      versions: db.prepare(
+        'SELECT id, project_id AS projectId, chapter_id AS chapterId, source, title, content, words, created_at AS createdAt FROM chapter_versions WHERE project_id = ? ORDER BY created_at ASC',
+      ).all(projectId) as unknown as ChapterVersion[],
+    },
+  };
+}
+
+export function importProjectBundle(bundle: ProjectBundle): ProjectDetail {
+  if (!bundle || bundle.format !== 'inkquay.project' || bundle.version !== 1 || !bundle.project) {
+    throw new Error('不是有效的 Inkquay 项目备份');
+  }
+  const source = bundle.project;
+  if (!source.title?.trim()) throw new Error('备份缺少作品名');
+  const type = ['novel', 'short', 'screenplay', 'series'].includes(source.type) ? source.type : 'novel';
+  const project = createProject({
+    title: source.title.trim(),
+    type,
+    genre: source.genre || '',
+    description: source.description || '',
+    goalWords: Number(source.goalWords) || undefined,
+  });
+  const stamp = now();
+  db.exec('BEGIN');
+  try {
+    db.prepare('DELETE FROM chapters WHERE project_id = ?').run(project.id);
+    db.prepare('DELETE FROM outline_beats WHERE project_id = ?').run(project.id);
+    db.prepare('DELETE FROM outline_acts WHERE project_id = ?').run(project.id);
+    db.prepare('DELETE FROM characters WHERE project_id = ?').run(project.id);
+    db.prepare('DELETE FROM scenes WHERE project_id = ?').run(project.id);
+    db.prepare('DELETE FROM shots WHERE project_id = ?').run(project.id);
+    db.prepare('DELETE FROM foreshadows WHERE project_id = ?').run(project.id);
+
+    const chapterMap = new Map<string, string>();
+    (source.chapters || []).forEach((chapter, index) => {
+      const id = uid('ch');
+      if (chapter.id) chapterMap.set(chapter.id, id);
+      const content = chapter.content || '';
+      db.prepare(`INSERT INTO chapters (id, project_id, volume, number, title, content, status, sort_order, words, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(id, project.id, chapter.volume || '第一卷', chapter.number || `第${index + 1}章`, chapter.title || '未命名章节',
+          content, chapter.status || '草稿', index, countWords(content), stamp);
+    });
+
+    (source.versions || []).forEach((version) => {
+      const chapterId = chapterMap.get(version.chapterId);
+      if (!chapterId || typeof version.content !== 'string') return;
+      db.prepare(`INSERT INTO chapter_versions (id, project_id, chapter_id, source, title, content, words, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(uid('ver'), project.id, chapterId, version.source || '导入', version.title || '未命名章节',
+          version.content, countWords(version.content), version.createdAt || stamp);
+    });
+
+    (source.characters || []).forEach((character, index) => {
+      db.prepare(`INSERT INTO characters (id, project_id, name, role, age, avatar, tags, quote, description, secret, relations, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(uid('char'), project.id, character.name || '未命名人物', character.role || '', character.age || '',
+          character.avatar || (character.name || '人').slice(0, 1), JSON.stringify(character.tags || []),
+          character.quote || '', character.description || '', character.secret || '',
+          JSON.stringify(character.relations || []), index);
+    });
+
+    const actMap = new Map<string, string>();
+    (source.outline?.acts || []).forEach((act, index) => {
+      const id = uid('act');
+      if (act.id) actMap.set(act.id, id);
+      db.prepare('INSERT INTO outline_acts (id, project_id, title, summary, sort_order) VALUES (?, ?, ?, ?, ?)')
+        .run(id, project.id, act.title || `第${index + 1}幕`, act.summary || '', index);
+    });
+    (source.outline?.beats || []).forEach((beat, index) => {
+      const actId = actMap.get(beat.actId) || (source.outline?.acts?.[0]?.id ? actMap.get(source.outline.acts[0].id) : undefined);
+      if (!actId) return;
+      db.prepare(`INSERT INTO outline_beats (id, project_id, act_id, chapter_no, title, summary, tags, status, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(uid('beat'), project.id, actId, Number(beat.chapterNo) || index + 1, beat.title || '未命名场景',
+          beat.summary || '', JSON.stringify(beat.tags || []), beat.status || '待写', index);
+    });
+
+    const sceneMap = new Map<string, string>();
+    (source.scenes || []).forEach((scene, index) => {
+      const id = uid('scene');
+      if (scene.id) sceneMap.set(scene.id, id);
+      db.prepare(`INSERT INTO scenes (id, project_id, number, group_name, place, time, heading, content, status, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(id, project.id, scene.number || String(index + 1), scene.groupName || '', scene.place || '',
+          scene.time || '', scene.heading || '', scene.content || '', scene.status || '草稿', index);
+    });
+    (source.shots || []).forEach((shot, index) => {
+      const sceneId = sceneMap.get(shot.sceneId);
+      if (!sceneId) return;
+      db.prepare(`INSERT INTO shots (id, project_id, scene_id, shot_no, shot_type, camera, duration, description, notes, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(uid('shot'), project.id, sceneId, shot.shotNo || String(index + 1), shot.shotType || '', shot.camera || '',
+          shot.duration || '', shot.description || '', shot.notes || '', index);
+    });
+    (source.foreshadows || []).forEach((foreshadow, index) => {
+      db.prepare('INSERT INTO foreshadows (id, project_id, name, planted, payoff, status, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run(uid('fore'), project.id, foreshadow.name || '未命名伏笔', foreshadow.planted || '', foreshadow.payoff || '',
+          foreshadow.status || '待回收', index);
+    });
+
+    db.prepare('UPDATE projects SET cover = ?, status = ?, total_words = 0, updated_at = ? WHERE id = ?')
+      .run(source.cover || project.cover, source.status || '草稿', stamp, project.id);
+    recalculateProjectWords(project.id);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+  return getProjectDetail(project.id)!;
 }
 
 export function completeOnboarding(input: {

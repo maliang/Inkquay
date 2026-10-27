@@ -8,7 +8,7 @@ const cwd = path.resolve(import.meta.dirname, '..');
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pw-api-test-'));
 const port = 8799;
 const base = `http://127.0.0.1:${port}`;
-const server = spawn(process.execPath, ['--import', 'tsx', 'src/server/index.ts'], {
+let server = spawn(process.execPath, ['--import', 'tsx', 'src/server/index.ts'], {
   cwd,
   env: { ...process.env, PORT: String(port), PW_DATA_DIR: dataDir },
   stdio: ['ignore', 'pipe', 'pipe'],
@@ -206,17 +206,41 @@ async function main() {
   const messagesAfter = await json(`/api/projects/${projectId}/messages?chapterId=${chapterId}`);
   assert.equal(messagesAfter.messages.length, messagesBefore.messages.length + 2);
   assert.ok(messagesAfter.messages.at(-1).content.length > 20);
+  const previousAssistant = messagesAfter.messages.at(-1);
   const regenRes = await fetch(`${base}/api/ai/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectId, chapterId, prompt: '先写一段气氛。', regenerate: true }),
+    body: JSON.stringify({ projectId, chapterId, prompt: '先写一段气氛。', regenerate: true, replaceMessageId: previousAssistant.id }),
   });
   assert.equal(regenRes.status, 200);
   await regenRes.text();
   const messagesRegen = await json(`/api/projects/${projectId}/messages?chapterId=${chapterId}`);
-  assert.equal(messagesRegen.messages.length, messagesAfter.messages.length + 1, 'regenerate saves only assistant');
+  assert.equal(messagesRegen.messages.length, messagesAfter.messages.length, 'regenerate replaces the old assistant instead of appending');
+  assert.notEqual(messagesRegen.messages.at(-1).id, previousAssistant.id);
   console.log('PASS AI stream + regenerate');
 
+  const stopController = new AbortController();
+  const stopRes = await fetch(`${base}/api/ai/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId, chapterId, prompt: '写一段会被中止的长段落。' }),
+    signal: stopController.signal,
+  });
+  assert.equal(stopRes.status, 200);
+  const reader = stopRes.body.getReader();
+  await reader.read();
+  stopController.abort();
+  await new Promise((resolve) => setTimeout(resolve, 700));
+  const stoppedMessages = await json(`/api/projects/${projectId}/messages?chapterId=${chapterId}`);
+  const stopped = stoppedMessages.messages.at(-1);
+  assert.equal(stopped.role, 'assistant');
+  assert.equal(stopped.status, 'aborted');
+  assert.ok(stopped.content.length > 0, 'aborted stream keeps the partial text');
+  console.log('PASS abort keeps partial assistant text');
+
+  await json(`/api/chapters/${chapterId}`, {
+    method: 'PATCH', body: JSON.stringify({ content: '这是一个导出测试。\n\n正文必须可读。' }),
+  });
   const exportRes = await fetch(`${base}/api/projects/${projectId}/export`);
   assert.equal(exportRes.status, 200);
   const markdown = await exportRes.text();
@@ -228,6 +252,58 @@ async function main() {
   assert.equal(docxBytes[0], 0x50);
   assert.equal(docxBytes[1], 0x4b);
   console.log('PASS markdown + docx export');
+
+  const bundleRes = await fetch(`${base}/api/projects/${projectId}/bundle`);
+  assert.equal(bundleRes.status, 200);
+  const bundle = await bundleRes.json();
+  assert.equal(bundle.format, 'inkquay.project');
+  assert.equal(bundle.project.title, 'API 测试作品');
+  const imported = await json('/api/projects/import', {
+    method: 'POST', body: JSON.stringify({ bundle }),
+  });
+  assert.notEqual(imported.project.id, projectId);
+  assert.equal(imported.project.title, 'API 测试作品');
+  assert.ok(imported.project.chapters.some((chapter) => chapter.content.includes('导出测试')));
+  assert.ok(Array.isArray(bundle.project.versions) && bundle.project.versions.length > 0);
+  const importedBundleRes = await fetch(`${base}/api/projects/${imported.project.id}/bundle`);
+  const importedBundle = await importedBundleRes.json();
+  assert.equal(importedBundle.project.versions.length, bundle.project.versions.length);
+  await json(`/api/projects/${imported.project.id}`, { method: 'DELETE' });
+  console.log('PASS project bundle export + import');
+
+  const extra = await json(`/api/projects/${projectId}/chapters`, {
+    method: 'POST', body: JSON.stringify({ title: '待删除章节' }),
+  });
+  const deletedChapter = await json(`/api/chapters/${extra.chapter.id}`, { method: 'DELETE' });
+  assert.equal(deletedChapter.ok, true);
+  assert.ok(deletedChapter.versions >= 0);
+  const afterDelete = await json(`/api/projects/${projectId}`);
+  assert.ok(!afterDelete.project.chapters.some((chapter) => chapter.id === extra.chapter.id));
+  console.log('PASS chapter delete');
+
+  const emptyProject = await json('/api/projects', {
+    method: 'POST', body: JSON.stringify({ title: '空作品' }),
+  });
+  const emptyExport = await fetch(`${base}/api/projects/${emptyProject.project.id}/export`);
+  assert.equal(emptyExport.status, 400, 'empty project export is rejected with a readable error');
+  await json(`/api/projects/${emptyProject.project.id}`, { method: 'DELETE' });
+  console.log('PASS empty export guard');
+
+  await json(`/api/projects/${projectId}`, { method: 'DELETE' });
+  server.kill('SIGTERM');
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  server = spawn(process.execPath, ['--import', 'tsx', 'src/server/index.ts'], {
+    cwd,
+    env: { ...process.env, PORT: String(port), PW_DATA_DIR: dataDir },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  server.stdout.on('data', (d) => { stdout += String(d); });
+  server.stderr.on('data', (d) => { stderr += String(d); });
+  await waitForServer();
+  const reboot = await json('/api/bootstrap');
+  assert.equal(reboot.projects.length, 0, 'restart after deleting all projects stays empty');
+  assert.equal(reboot.providers.length, 9, 'restart does not duplicate providers');
+  console.log('PASS restart after empty library');
 
   console.log('\nAll API tests passed.');
 }

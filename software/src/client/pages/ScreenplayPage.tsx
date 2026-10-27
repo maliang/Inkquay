@@ -19,6 +19,7 @@ export function ScreenplayPage() {
   const [editing, setEditing] = useState<Scene | null>(null);
   const [form, setForm] = useState({ heading: '', place: '', time: '日', content: '', status: '草稿', groupName: '第一幕' });
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [mode, setMode] = useState<'script' | 'boards'>('script');
   const [editingShot, setEditingShot] = useState<Shot | null>(null);
   const [shotForm, setShotForm] = useState({ shotNo: '', shotType: '', camera: '', duration: '', description: '', notes: '' });
@@ -30,7 +31,7 @@ export function ScreenplayPage() {
       setProject(next);
       rememberProject(next.id);
       setActiveId(next.scenes[0]?.id || '');
-    });
+    }).catch((err) => setLoadError(err instanceof Error ? err.message : '加载失败'));
   }, [projectId, projects, rememberProject]);
 
   const groups = useMemo(() => {
@@ -61,6 +62,32 @@ export function ScreenplayPage() {
       toast(err instanceof Error ? err.message : '保存失败', 'warn');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function removeScene(scene: Scene) {
+    if (!window.confirm(`确定删除场次「${scene.number} ${scene.place}」？该场分镜会一并删除，且不可恢复。`)) return;
+    try {
+      await api.deleteScene(scene.id);
+      const remaining = (project?.scenes || []).filter((s) => s.id !== scene.id);
+      setProject((prev) => prev ? { ...prev, scenes: remaining, shots: prev.shots.filter((s) => s.sceneId !== scene.id) } : prev);
+      setActiveId(remaining[0]?.id || '');
+      setEditing(null);
+      toast('场次已删除');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '删除场次失败', 'warn');
+    }
+  }
+
+  async function removeShot(shot: Shot) {
+    if (!window.confirm(`确定删除镜头 ${shot.shotNo}？此操作不可恢复。`)) return;
+    try {
+      await api.deleteShot(shot.id);
+      setProject((prev) => prev ? { ...prev, shots: prev.shots.filter((s) => s.id !== shot.id) } : prev);
+      setEditingShot(null);
+      toast('镜头已删除');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '删除镜头失败', 'warn');
     }
   }
 
@@ -129,13 +156,18 @@ export function ScreenplayPage() {
     }
   }
 
-  if (!project) return <div className="loading-screen"><span className="brand__seal">私</span><p>正在打开剧本工坊…</p></div>;
+  if (!project) return (
+    <div className={`loading-screen${loadError ? ' loading-screen--error' : ''}`}>
+      <span className="brand__seal">私</span>
+      {loadError ? <><strong>打不开剧本工坊</strong><p>{loadError}</p><Link className="btn btn--ghost btn--sm" to="/">返回书房</Link></> : <p>正在打开剧本工坊…</p>}
+    </div>
+  );
   const topbar = (
     <>
       <div className="topbar-left"><Link className="tb-crumb__back" to="/"><Icon name="arrow-left" /></Link><div className="tb-project"><Cover project={project} variant="mini" /><div className="tb-project__info"><div className="tb-project__title">{project.title}<span className="tb-tag">{typeLabel[project.type]}</span></div><span className="tb-project__meta">{project.genre}</span></div></div></div>
       <nav className="topbar-tabs"><Link to={`/project/${project.id}/screenplay`} className="is-active">剧本</Link><Link to={`/project/${project.id}/outline`}>大纲</Link><Link to={`/project/${project.id}/codex`}>设定</Link></nav>
-      <div className="topbar-actions"><span className="tb-words"><b>{project.scenes.length}</b> 场</span><div className="tb-divider" /><a className="icon-btn tb-icon" href={api.exportProjectDocx(project.id)} title="导出 Word"><Icon name="book" /></a>
-        <a className="icon-btn tb-icon" href={api.exportProject(project.id)} title="导出 Markdown"><Icon name="download" /></a><Link className="icon-btn tb-icon" to="/settings"><Icon name="settings" /></Link><button className="avatar" type="button">{(settings.profile?.name || '写作者').slice(0, 1)}</button></div>
+      <div className="topbar-actions"><span className="tb-words"><b>{project.scenes.length}</b> 场</span><div className="tb-divider" /><button className="icon-btn tb-icon" type="button" onClick={() => { void api.downloadProjectDocx(project.id).catch((err) => toast(err instanceof Error ? err.message : '导出失败', 'warn')); }} title="导出 Word"><Icon name="book" /></button>
+        <button className="icon-btn tb-icon" type="button" onClick={() => { void api.downloadProjectMarkdown(project.id).catch((err) => toast(err instanceof Error ? err.message : '导出失败', 'warn')); }} title="导出 Markdown"><Icon name="download" /></button><Link className="icon-btn tb-icon" to="/settings"><Icon name="settings" /></Link><button className="avatar" type="button">{(settings.profile?.name || '写作者').slice(0, 1)}</button></div>
     </>
   );
   const panel = (
@@ -228,7 +260,7 @@ export function ScreenplayPage() {
               <div className="form-row"><div className="form-block"><label className="form-label">幕</label><input className="text-input" value={form.groupName} onChange={(e) => setForm({ ...form, groupName: e.target.value })} /></div><div className="form-block"><label className="form-label">状态</label><select className="text-input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}><option>草稿</option><option>初稿</option><option>定稿</option></select></div></div>
               <div className="form-block"><label className="form-label">正文 <span>动作、角色与对白，空行分段</span></label><textarea className="text-input text-input--area script-textarea" rows={10} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} /></div>
             </div>
-            <footer className="modal__foot"><span className="modal__hint">保存后会立即写入本地数据库。</span><div className="modal__foot-actions"><button className="btn btn--ghost" type="button" onClick={() => setEditing(null)}>取消</button><button className="btn btn--primary" type="button" disabled={saving} onClick={saveScene}>{saving ? '保存中…' : '保存场次'}</button></div></footer>
+            <footer className="modal__foot"><span className="modal__hint">保存后会立即写入本地数据库。</span><div className="modal__foot-actions"><button className="btn btn--ghost insight-form__danger" type="button" onClick={() => void removeScene(editing)}><Icon name="trash" /> 删除场次</button><button className="btn btn--ghost" type="button" onClick={() => setEditing(null)}>取消</button><button className="btn btn--primary" type="button" disabled={saving} onClick={saveScene}>{saving ? '保存中…' : '保存场次'}</button></div></footer>
           </div>
         </div>
       )}
@@ -242,7 +274,7 @@ export function ScreenplayPage() {
               <div className="form-block"><label className="form-label">画面内容</label><input className="text-input" value={shotForm.description} onChange={(e) => setShotForm({ ...shotForm, description: e.target.value })} /></div>
               <div className="form-block"><label className="form-label">备注 / 声音</label><textarea className="text-input text-input--area" rows={3} value={shotForm.notes} onChange={(e) => setShotForm({ ...shotForm, notes: e.target.value })} /></div>
             </div>
-            <footer className="modal__foot"><span className="modal__hint">分镜字段会保存到 SQLite。</span><div className="modal__foot-actions"><button className="btn btn--ghost" type="button" onClick={() => setEditingShot(null)}>取消</button><button className="btn btn--primary" type="button" disabled={saving} onClick={saveShot}>{saving ? '保存中…' : '保存分镜'}</button></div></footer>
+            <footer className="modal__foot"><span className="modal__hint">分镜字段会保存到 SQLite。</span><div className="modal__foot-actions"><button className="btn btn--ghost insight-form__danger" type="button" onClick={() => void removeShot(editingShot)}><Icon name="trash" /> 删除镜头</button><button className="btn btn--ghost" type="button" onClick={() => setEditingShot(null)}>取消</button><button className="btn btn--primary" type="button" disabled={saving} onClick={saveShot}>{saving ? '保存中…' : '保存分镜'}</button></div></footer>
           </div>
         </div>
       )}

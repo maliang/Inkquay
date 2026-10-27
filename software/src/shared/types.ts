@@ -194,6 +194,7 @@ export interface ChatMessage {
   chapterId: string | null;
   role: 'user' | 'assistant';
   content: string;
+  status?: 'complete' | 'aborted';
   createdAt: string;
 }
 
@@ -220,6 +221,7 @@ export interface AiStreamRequest {
   prompt: string;
   mode?: 'continue' | 'rewrite' | 'outline' | 'check';
   regenerate?: boolean;
+  replaceMessageId?: string;
 }
 
 export interface ApiError {
@@ -254,6 +256,31 @@ export interface ProjectPlan {
   acts: PlannedAct[];
   characters: PlannedCharacter[];
   chapter: { title: string; content: string };
+}
+
+export interface ProjectBundleProject {
+  title: string;
+  type: ProjectType;
+  genre: string;
+  description: string;
+  cover: string;
+  status: string;
+  goalWords: number;
+  chapters: Chapter[];
+  characters: Character[];
+  outline: { acts: OutlineAct[]; beats: OutlineBeat[] };
+  scenes: Scene[];
+  shots: Shot[];
+  foreshadows: Foreshadow[];
+  /** 章节历史版本；旧备份可以没有这个字段 */
+  versions?: ChapterVersion[];
+}
+
+export interface ProjectBundle {
+  format: 'inkquay.project';
+  version: 1;
+  exportedAt: string;
+  project: ProjectBundleProject;
 }
 
 export interface ChapterVersion {

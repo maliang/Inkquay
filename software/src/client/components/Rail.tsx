@@ -14,20 +14,25 @@ export function Rail({ active, projectId }: { active: 'library' | 'studio' | 'ou
   const sections = [
     { key: 'library', label: '作品库', icon: 'book', to: '/' },
     { key: 'studio', label: '写作台', icon: 'pen', to: `/project/${writeId}` },
-    { key: 'outline', label: '大纲', icon: 'map', to: `/project/${pid}/outline` },
-    { key: 'codex', label: '设定', icon: 'users', to: `/project/${pid}/codex` },
-    { key: 'screenplay', label: '剧本', icon: 'clapper', to: `/project/${screenplayId}/screenplay` },
+    { key: 'outline', label: '大纲', icon: 'map', to: `/project/${pid}/outline`, needsProject: true },
+    { key: 'codex', label: '设定', icon: 'users', to: `/project/${pid}/codex`, needsProject: true },
+    { key: 'screenplay', label: '剧本', icon: 'clapper', to: `/project/${screenplayId}/screenplay`, needsProject: true },
   ] as const;
   return (
     <aside className="rail" aria-label="主导航">
       <Link className="brand" to="/" aria-label="私家写手首页"><img className="brand__logo" src="/logo.svg" alt="Inkquay 私家写手" /></Link>
       <nav className="rail-nav">
-        {sections.map((s) => (
+        {sections.map((s) => ('needsProject' in s && s.needsProject && !projectId ? (
+          <span key={s.key} className="rail-btn is-disabled" title={`先打开一本作品，再进入${s.label}`} aria-disabled="true">
+            <Icon name={s.icon} />
+            <span>{s.label}</span>
+          </span>
+        ) : (
           <Link key={s.key} to={s.to} className={`rail-btn${active === s.key ? ' is-active' : ''}`} title={s.label}>
             <Icon name={s.icon} />
             <span>{s.label}</span>
           </Link>
-        ))}
+        )))}
       </nav>
       <div className="rail-foot">
         <Link className={`rail-btn rail-btn--quiet${location.pathname === '/settings' ? ' is-active' : ''}`} to="/settings" title="设置">

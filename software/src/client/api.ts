@@ -5,6 +5,7 @@ import type {
   Chapter,
   ChatMessage,
   ModelInfo,
+  ProjectBundle,
   ProjectDetail,
   ProjectSummary,
   ProviderInfo,
@@ -36,6 +37,21 @@ export const api = {
     request<{ chapter: Chapter }>(`/api/chapters/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   createChapter: (projectId: string, input: { title?: string; volume?: string; number?: string }) =>
     request<{ chapter: Chapter }>(`/api/projects/${projectId}/chapters`, { method: 'POST', body: JSON.stringify(input) }),
+  deleteChapter: (id: string) =>
+    request<{ ok: boolean; versions: number }>(`/api/chapters/${id}`, { method: 'DELETE' }),
+  flushChapter: (id: string, patch: { content?: string; title?: string }) => {
+    // pagehide 时普通 await 已来不及，用 keepalive 把最后一段输入发出去。
+    try {
+      void fetch(`/api/chapters/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+        keepalive: true,
+      });
+    } catch {
+      // 页面正在关闭，失败也只能交给下次自动保存
+    }
+  },
   completeOnboarding: (input: {
     name: string; signature?: string; providerId: string; apiKey: string; baseUrl?: string; modelId: string;
   }) => request<{ settings: AppSettings; provider: ProviderInfo }>('/api/onboarding', { method: 'POST', body: JSON.stringify(input) }),
@@ -48,7 +64,8 @@ export const api = {
   createProvider: (input: { name: string; kind?: string; baseUrl?: string; apiKey?: string; models?: ModelInfo[]; enabledModels?: string[] }) =>
     request<{ provider: ProviderInfo }>('/api/providers', { method: 'POST', body: JSON.stringify(input) }),
   testProvider: (id: string) => request<{ ok: boolean; message: string; models?: string[] }>(`/api/providers/${id}/test`, { method: 'POST' }),
-  planProject: (id: string) => request<{ plan: import('../shared/types').ProjectPlan }>(`/api/projects/${id}/plan`, { method: 'POST' }),
+  planProject: (id: string, signal?: AbortSignal) =>
+    request<{ plan: import('../shared/types').ProjectPlan }>(`/api/projects/${id}/plan`, { method: 'POST', signal }),
   applyPlan: (id: string, plan: import('../shared/types').ProjectPlan) =>
     request<{ project: ProjectDetail }>(`/api/projects/${id}/plan/apply`, { method: 'POST', body: JSON.stringify({ plan }) }),
   versions: (projectId: string, chapterId: string) =>
@@ -59,6 +76,8 @@ export const api = {
     request<{ chapter: Chapter; versions: import('../shared/types').ChapterVersion[] }>(`/api/chapters/${chapterId}/versions/${versionId}/restore`, { method: 'POST' }),
   updateCharacter: (id: string, patch: Record<string, unknown>) =>
     request<{ character: import('../shared/types').Character }>(`/api/characters/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteCharacter: (id: string) =>
+    request<{ ok: boolean }>(`/api/characters/${id}`, { method: 'DELETE' }),
   createCharacter: (projectId: string, input: Record<string, unknown>) =>
     request<{ character: import('../shared/types').Character }>(`/api/projects/${projectId}/characters`, { method: 'POST', body: JSON.stringify(input) }),
   updateBeat: (id: string, patch: Record<string, unknown>) =>
@@ -73,21 +92,54 @@ export const api = {
     request<{ scene: import('../shared/types').Scene }>(`/api/scenes/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   createScene: (projectId: string, input: Record<string, unknown>) =>
     request<{ scene: import('../shared/types').Scene }>(`/api/projects/${projectId}/scenes`, { method: 'POST', body: JSON.stringify(input) }),
+  deleteScene: (id: string) =>
+    request<{ ok: boolean }>(`/api/scenes/${id}`, { method: 'DELETE' }),
   updateShot: (id: string, patch: Record<string, unknown>) =>
     request<{ shot: import('../shared/types').Shot }>(`/api/shots/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   createShot: (projectId: string, input: Record<string, unknown>) =>
     request<{ shot: import('../shared/types').Shot }>(`/api/projects/${projectId}/shots`, { method: 'POST', body: JSON.stringify(input) }),
+  deleteShot: (id: string) =>
+    request<{ ok: boolean }>(`/api/shots/${id}`, { method: 'DELETE' }),
   generateShots: (sceneId: string) =>
     request<{ shots: import('../shared/types').Shot[] }>(`/api/scenes/${sceneId}/shots/generate`, { method: 'POST' }),
   updateForeshadow: (id: string, patch: Record<string, unknown>) =>
     request<{ foreshadow: import('../shared/types').Foreshadow }>(`/api/foreshadows/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   createForeshadow: (projectId: string, input: Record<string, unknown>) =>
     request<{ foreshadow: import('../shared/types').Foreshadow }>(`/api/projects/${projectId}/foreshadows`, { method: 'POST', body: JSON.stringify(input) }),
+  deleteForeshadow: (id: string) =>
+    request<{ ok: boolean }>(`/api/foreshadows/${id}`, { method: 'DELETE' }),
   messages: (projectId: string, chapterId?: string | null) =>
     request<{ messages: ChatMessage[] }>(`/api/projects/${projectId}/messages${chapterId ? `?chapterId=${encodeURIComponent(chapterId)}` : ''}`),
   projects: () => request<{ projects: ProjectSummary[] }>('/api/projects'),
-  exportProject: (id: string) => `/api/projects/${id}/export`,
-  exportProjectDocx: (id: string) => `/api/projects/${id}/export.docx`,
+  downloadProjectMarkdown: (id: string) =>
+    api.downloadFile(`/api/projects/${id}/export`, '作品.md'),
+  downloadProjectDocx: (id: string) =>
+    api.downloadFile(`/api/projects/${id}/export.docx`, '作品.docx'),
+  downloadProjectBundle: (id: string) =>
+    api.downloadFile(`/api/projects/${id}/bundle`, '作品.inkquay.json'),
+  projectBundle: (id: string) => request<ProjectBundle>(`/api/projects/${id}/bundle`),
+  importProject: (bundle: ProjectBundle) =>
+    request<{ project: ProjectDetail }>('/api/projects/import', { method: 'POST', body: JSON.stringify({ bundle }) }),
+  downloadFile: async (url: string, fallbackName: string) => {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error((data as any)?.error || `下载失败（${response.status}）`);
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+    const plain = /filename="?([^";]+)"?/i.exec(disposition)?.[1];
+    const name = encoded ? decodeURIComponent(encoded) : plain || fallbackName;
+    const href = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = href;
+    anchor.download = name;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(href);
+  },
 };
 
 export interface StreamHandlers {

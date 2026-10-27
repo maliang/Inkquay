@@ -192,7 +192,7 @@ export function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'private-writer-settings.json';
+    a.download = 'inkquay-settings.json';
     a.click();
     URL.revokeObjectURL(url);
     toast('设置已导出（不含密钥）');
@@ -204,11 +204,11 @@ export function SettingsPage() {
       <div className="settings-shell" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <aside className="settings-nav">
           <div className="settings-brand"><img className="brand__logo brand__logo--sm" src="/logo.svg" alt="" /><div><strong>Inkquay</strong><span>私家写手 · 本地工作区</span></div></div>
-          <div className="settings-account"><span className="avatar avatar--settings">{(settings.profile.name || '作').slice(0, 1)}</span><div><strong>{settings.profile.name || '未命名作者'}</strong><span>Pro · 本地数据库</span></div><span className="sync-badge"><Icon name="check" /> 已连接</span></div>
+          <div className="settings-account"><span className="avatar avatar--settings">{(settings.profile.name || '作').slice(0, 1)}</span><div><strong>{settings.profile.name || '未命名作者'}</strong><span>本地版 · 数据只在这台电脑</span></div><span className="sync-badge"><Icon name="check" /> 本地可用</span></div>
           <nav className="settings-menu">
             {tabs.map((t) => <button key={t.id} type="button" className={tab === t.id ? 'is-active' : ''} onClick={() => setTab(t.id)}><Icon name={t.icon} /><span><strong>{t.label}</strong><em>{t.sub}</em></span>{t.id === 'models' ? <i className="settings-menu__badge">{providers.length}</i> : null}</button>)}
           </nav>
-          <div className="settings-navfoot"><Link className="text-btn" to="/"><Icon name="arrow-left" /> 返回工作区</Link><span>v0.1 · 全栈版</span></div>
+          <div className="settings-navfoot"><Link className="text-btn" to="/"><Icon name="arrow-left" /> 返回工作区</Link><span>Inkquay · 本地优先</span></div>
         </aside>
         <main className="settings-main">
           <header className="settings-head"><div><p className="eyebrow">应用设置</p><h2 id="settings-title">{meta.title}</h2><p>{meta.sub}</p></div><Link className="icon-btn" to="/" aria-label="关闭设置"><Icon name="x" /></Link></header>
@@ -287,26 +287,24 @@ export function SettingsPage() {
                 </div>
                 <div className="settings-block"><div className="settings-block__head"><div><h3>生成参数</h3><p>作用于写作台的默认生成行为。</p></div></div><div className="generation-grid">
                   <div className="setting-row setting-row--range"><div><strong>创造性</strong><span>越低越克制，越高越发散</span></div><div className="range-wrap"><input type="range" min="0" max="1.5" step="0.1" value={settings.generation.temperature} onChange={(e) => { void updateSettings({ generation: { ...settings.generation, temperature: Number(e.target.value) } }); }} /><b>{settings.generation.temperature.toFixed(1)}</b></div></div>
-                  <div className="setting-row"><div><strong>流式输出</strong><span>AI 边生成边显示</span></div><button className={`switch${settings.generation.streaming ? ' is-on' : ''}`} type="button" onClick={() => { void updateSettings({ generation: { ...settings.generation, streaming: !settings.generation.streaming } }); }}><i /></button></div>
                   <div className="setting-row"><div><strong>默认模型</strong><span>切换后写作台同步更新</span></div><select className="text-input text-input--compact" value={settings.defaultModel ? `${settings.defaultModel.providerId}::${settings.defaultModel.modelId}` : ''} onChange={(e) => void changeDefaultModel(e.target.value)}>{modelEntries.map((entry) => <option key={`${entry.provider.id}::${entry.model.id}`} value={`${entry.provider.id}::${entry.model.id}`}>{entry.provider.name} · {entry.model.name}</option>)}</select></div>
-                  <div className="setting-row"><div><strong>备用模型</strong><span>主模型不可用时提示切换</span></div><select className="text-input text-input--compact" value={settings.fallbackModel ? `${settings.fallbackModel.providerId}::${settings.fallbackModel.modelId}` : ''} onChange={(e) => { const value = e.target.value; const entry = modelEntries.find((x) => `${x.provider.id}::${x.model.id}` === value); void updateSettings({ fallbackModel: entry ? { providerId: entry.provider.id, modelId: entry.model.id } : null }); }}><option value="">不启用</option>{modelEntries.map((entry) => <option key={`${entry.provider.id}::${entry.model.id}`} value={`${entry.provider.id}::${entry.model.id}`}>{entry.provider.name} · {entry.model.name}</option>)}</select></div>
                 </div></div>
-                <div className="provider-note"><div className="provider-note__icon"><Icon name="shield" /></div><div><strong>实际请求由服务端转发</strong><p>供应商配置保存在本地 SQLite，密钥加密存储；OpenAI 兼容接口、Anthropic 和 Gemini 分别走各自的流式协议。没有配置 Key 时会自动回退到本地演示模型。</p></div></div>
+                <div className="provider-note"><div className="provider-note__icon"><Icon name="shield" /></div><div><strong>实际请求由服务端转发</strong><p>供应商配置保存在本地 SQLite，密钥加密存储；OpenAI 兼容接口、Anthropic 和 Gemini 分别走各自的流式协议。没有配置 Key 时会明确报错，不会静默回退到演示模型。</p></div></div>
               </>
             )}
 
             {tab === 'writing' && (
               <><div className="settings-block"><div className="settings-block__head"><div><h3>默认写作习惯</h3><p>新建章节与 AI 共笔会参考这些偏好。</p></div></div><div className="generation-grid">
-                <div className="setting-row"><div><strong>默认视角</strong><span>新建项目时的叙事人称</span></div><select className="text-input text-input--compact" value={settings.prefs.pov} onChange={(e) => void updateSettings({ prefs: { ...settings.prefs, pov: e.target.value } })}><option>第三人称限知</option><option>第一人称</option><option>全知视角</option><option>多视角</option></select></div>
-                <div className="setting-row"><div><strong>默认体裁</strong><span>新建向导的预选类型</span></div><select className="text-input text-input--compact" value={settings.prefs.genre} onChange={(e) => void updateSettings({ prefs: { ...settings.prefs, genre: e.target.value } })}><option>悬疑 · 文学</option><option>现实主义</option><option>科幻 · 近未来</option><option>犯罪 · 黑色电影</option></select></div>
+                <div className="setting-row"><div><strong>默认视角</strong><span>注入 AI 共笔的叙事人称</span></div><select className="text-input text-input--compact" value={settings.prefs.pov} onChange={(e) => void updateSettings({ prefs: { ...settings.prefs, pov: e.target.value } })}><option>第三人称限知</option><option>第一人称</option><option>全知视角</option><option>多视角</option></select></div>
+                <div className="setting-row"><div><strong>默认体裁</strong><span>新建长篇小说时的默认题材</span></div><select className="text-input text-input--compact" value={settings.prefs.genre} onChange={(e) => void updateSettings({ prefs: { ...settings.prefs, genre: e.target.value } })}><option>悬疑 · 文学</option><option>现实主义</option><option>科幻 · 近未来</option><option>犯罪 · 黑色电影</option></select></div>
                 <div className="setting-row"><div><strong>AI 续写长度</strong><span>单次续写的目标字数</span></div><select className="text-input text-input--compact" value={settings.prefs.aiLength} onChange={(e) => void updateSettings({ prefs: { ...settings.prefs, aiLength: e.target.value } })}><option>短 · 约 300 字</option><option>中 · 约 500 字</option><option>长 · 约 800 字</option></select></div>
-                <div className="setting-row"><div><strong>自动保存</strong><span>停止输入 800ms 后保存草稿</span></div><button className={`switch${settings.prefs.autoSave ? ' is-on' : ''}`} type="button" onClick={() => void updateSettings({ prefs: { ...settings.prefs, autoSave: !settings.prefs.autoSave } })}><i /></button></div>
+                <div className="setting-row"><div><strong>自动保存</strong><span>开启后停止输入 800ms 自动保存；关闭后请按 ⌘S</span></div><button className={`switch${settings.prefs.autoSave ? ' is-on' : ''}`} type="button" onClick={() => void updateSettings({ prefs: { ...settings.prefs, autoSave: !settings.prefs.autoSave } })}><i /></button></div>
               </div></div>
               <div className="settings-block"><div className="settings-block__head"><div><h3>AI 文风</h3><p>作为默认语气注入每一次共笔。</p></div></div><div className="style-picker">{['克制留白', '潮湿阴郁', '细腻感官', '冷峻对白', '口语叙事'].map((style) => <button key={style} type="button" className={settings.prefs.style === style ? 'is-active' : ''} onClick={() => void updateSettings({ prefs: { ...settings.prefs, style } })}>{style}</button>)}</div></div></>
             )}
 
             {tab === 'shortcuts' && (
-              <div className="settings-block"><div className="settings-block__head"><div><h3>全局快捷键</h3><p>写作时尽量不离开键盘。</p></div></div><div className="shortcut-table">{[['发送 AI 指令', '⌘ ↵'], ['保存当前章节', '⌘ S'], ['返回作品库', 'G L'], ['关闭浮层 / 设置', 'Esc']].map(([label, key]) => <div className="shortcut-row" key={label}><span>{label}</span><kbd>{key}</kbd></div>)}</div></div>
+              <div className="settings-block"><div className="settings-block__head"><div><h3>全局快捷键</h3><p>写作时尽量不离开键盘。</p></div></div><div className="shortcut-table">{[['发送 AI 指令', '⌘ ↵'], ['保存当前章节', '⌘ S'], ['关闭浮层 / 设置', 'Esc']].map(([label, key]) => <div className="shortcut-row" key={label}><span>{label}</span><kbd>{key}</kbd></div>)}</div></div>
             )}
 
             {tab === 'data' && (

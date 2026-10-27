@@ -1340,3 +1340,57 @@ html[data-theme="paper"] .onboarding-preview {
 @media (max-width: 800px) {
   .version-compare__body { grid-template-columns: 1fr; }
 }
+
+.loading-screen--error strong {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 500;
+}
+.loading-screen--error p {
+  max-width: 420px;
+  text-align: center;
+  line-height: 1.7;
+  color: var(--accent-hi);
+}
+.loading-screen__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.modal__notice {
+  display: flex;
+  gap: 10px;
+  margin: 0 24px 14px;
+  padding: 11px 13px;
+  border: 1px solid var(--accent-line);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.65;
+}
+.modal__notice > .icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  color: var(--accent-hi);
+}
+.modal__notice strong {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.modal__notice p {
+  margin: 3px 0 0;
+  color: var(--muted);
+}
+.plan-review__empty {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}

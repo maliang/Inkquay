@@ -37,6 +37,8 @@ export function StudioPage() {
   const [content, setContent] = useState('');
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'dirty'>('saved');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [loadNonce, setLoadNonce] = useState(0);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -46,6 +48,8 @@ export function StudioPage() {
   const [aiTab, setAiTab] = useState<'write' | 'check' | 'versions'>('write');
   const [planningProject, setPlanningProject] = useState(false);
   const [planPreview, setPlanPreview] = useState<ProjectPlan | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [stopped, setStopped] = useState(false);
   const [versions, setVersions] = useState<ChapterVersion[]>([]);
   const [compareVersion, setCompareVersion] = useState<ChapterVersion | null>(null);
   const [selectionText, setSelectionText] = useState('');
@@ -55,6 +59,10 @@ export function StudioPage() {
   const chatRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const planAbortRef = useRef<AbortController | null>(null);
+  const selectionRangeRef = useRef<Range | null>(null);
+  const lastSnapshotRef = useRef<{ at: number; length: number }>({ at: 0, length: 0 });
+  const lastSnapshotContentRef = useRef('');
   const activeRef = useRef<{ id: string; title: string; content: string }>({ id: '', title: '', content: '' });
 
   const activeChapter = useMemo(() => project?.chapters.find((c) => c.id === activeId) || null, [project, activeId]);
@@ -65,10 +73,21 @@ export function StudioPage() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setLoadError('');
+    setProject(null);
+    setActiveId('');
+    setTitle('');
+    setContent('');
+    setMessages([]);
+    setVersions([]);
+    setSaveState('saved');
+    activeRef.current = { id: '', title: '', content: '' };
+    lastSnapshotContentRef.current = '';
     api.project(projectId)
       .then(({ project: next }) => {
         if (!alive) return;
         setProject(next);
+        setLoadError('');
         rememberProject(next.id);
         const remembered = localStorage.getItem(`pw.chapter.${next.id}`);
         const preferred = next.chapters.find((c) => c.id === remembered)
@@ -80,12 +99,37 @@ export function StudioPage() {
           setTitle(preferred.title);
           setContent(preferred.content);
           activeRef.current = { id: preferred.id, title: preferred.title, content: preferred.content };
+          lastSnapshotRef.current = { at: Date.now(), length: preferred.content.length };
+          lastSnapshotContentRef.current = preferred.content;
         }
       })
-      .catch((err) => toast(err instanceof Error ? err.message : '作品加载失败', 'warn'))
+      .catch((err) => {
+        if (!alive) return;
+        setProject(null);
+        setLoadError(err instanceof Error ? err.message : '作品加载失败');
+        toast(err instanceof Error ? err.message : '作品加载失败', 'warn');
+      })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [projectId, rememberProject, toast]);
+  }, [projectId, rememberProject, toast, loadNonce]);
+
+  useEffect(() => {
+    const flush = () => {
+      const active = activeRef.current;
+      if (active.id) api.flushChapter(active.id, { title: active.title, content: active.content });
+    };
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (saveState === 'saved') return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      window.removeEventListener('beforeunload', beforeUnload);
+    };
+  }, [saveState]);
 
   useEffect(() => {
     return () => {
@@ -145,7 +189,7 @@ export function StudioPage() {
 
   const saveNow = useCallback(async () => {
     const active = activeRef.current;
-    if (!active.id) return;
+    if (!active.id) return true;
     setSaveState('saving');
     try {
       const { chapter } = await api.updateChapter(active.id, { title: active.title, content: active.content });
@@ -154,28 +198,91 @@ export function StudioPage() {
         const chapters = prev.chapters.map((c) => c.id === chapter.id ? chapter : c);
         return { ...prev, chapters, totalWords: chapters.reduce((sum, c) => sum + c.words, 0) };
       });
-      setSaveState('saved');
+      if (activeRef.current.id === active.id) setSaveState('saved');
+      const last = lastSnapshotRef.current;
+      if (active.content.trim() && active.content !== lastSnapshotContentRef.current && Date.now() - last.at > 45_000) {
+        lastSnapshotRef.current = { at: Date.now(), length: active.content.length };
+        lastSnapshotContentRef.current = active.content;
+        void api.snapshotChapter(active.id, '自动保存', active.content, active.title)
+          .then(() => refreshVersions())
+          .catch(() => {});
+      }
+      return true;
     } catch (err) {
       setSaveState('dirty');
       toast(err instanceof Error ? err.message : '保存失败', 'warn');
+      return false;
     }
-  }, [toast]);
+  }, [refreshVersions, toast]);
+
+  useEffect(() => {
+    const bridge = window.inkquayDesktop;
+    if (!bridge) return;
+    const off = bridge.onCloseRequest(() => {
+      void (async () => {
+        try {
+          if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null; }
+          const ok = await saveNow();
+          if (ok) bridge.readyToClose();
+          else {
+            bridge.cancelClose();
+            toast('保存失败，窗口先不关闭，请重试', 'warn');
+          }
+        } catch {
+          bridge.cancelClose();
+          toast('保存失败，窗口先不关闭，请重试', 'warn');
+        }
+      })();
+    });
+    return off;
+  }, [saveNow]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null; }
+        void saveNow().then((ok) => { if (ok) toast('已保存'); });
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [saveNow, toast]);
 
   const scheduleSave = useCallback((nextTitle = title, nextContent = content) => {
     activeRef.current = { id: activeId, title: nextTitle, content: nextContent };
     setSaveState('dirty');
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    if (!settings.prefs.autoSave) return;
     saveTimer.current = window.setTimeout(() => { void saveNow(); }, 800);
-  }, [activeId, content, saveNow, title]);
+  }, [activeId, content, saveNow, settings.prefs.autoSave, title]);
 
-  function switchChapter(chapter: Chapter) {
+  async function switchChapter(chapter: Chapter) {
     if (chapter.id === activeId) return;
+    if (streaming) {
+      toast('请先停止 AI 生成，再切换章节', 'warn');
+      return;
+    }
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
-    void saveNow();
+    const saved = await saveNow();
+    if (!saved) {
+      toast('当前章节还没有保存成功，先不切换；请重试保存', 'warn');
+      return;
+    }
+    const previous = activeRef.current;
+    if (previous.id && previous.content.trim() && previous.content !== lastSnapshotContentRef.current) {
+      lastSnapshotContentRef.current = previous.content;
+      await api.snapshotChapter(previous.id, '切换章节', previous.content, previous.title).catch(() => {});
+      void refreshVersions();
+    }
     setActiveId(chapter.id);
     setTitle(chapter.title);
     setContent(chapter.content);
     activeRef.current = { id: chapter.id, title: chapter.title, content: chapter.content };
+    lastSnapshotRef.current = { at: Date.now(), length: chapter.content.length };
+    lastSnapshotContentRef.current = chapter.content;
+    selectionRangeRef.current = null;
+    setSelectionText('');
     setSaveState('saved');
     localStorage.setItem(`pw.chapter.${projectId}`, chapter.id);
   }
@@ -191,17 +298,18 @@ export function StudioPage() {
         number: `第${n}章`,
       });
       setProject((prev) => prev ? { ...prev, chapters: [...prev.chapters, chapter] } : prev);
-      switchChapter(chapter);
+      await switchChapter(chapter);
     } catch (err) {
       toast(err instanceof Error ? err.message : '新建章节失败', 'warn');
     }
   }
 
-  async function sendPrompt(text = input, regenerate = false, onAssistantDone?: (id: string) => void) {
+  async function sendPrompt(text = input, regenerate = false, onAssistantDone?: (id: string) => void, replaceMessageId?: string) {
     const prompt = text.trim();
     if (!prompt || streaming || !project) return;
     setInput('');
     setStreaming(true);
+    setStopped(false);
     setStreamText('');
     if (!regenerate) {
       const optimistic: ChatMessage = { id: `tmp-${Date.now()}`, projectId: project.id, chapterId: activeId, role: 'user', content: prompt, createdAt: new Date().toISOString() };
@@ -218,6 +326,7 @@ export function StudioPage() {
         providerId: settings.defaultModel?.providerId,
         modelId: settings.defaultModel?.modelId,
         regenerate,
+        replaceMessageId,
       }, {
         onMeta: () => {},
         onDelta: (delta) => {
@@ -236,18 +345,21 @@ export function StudioPage() {
           }]);
           setStreamText('');
           setStreaming(false);
+          setStopped(false);
           onAssistantDone?.(id);
         },
         onError: (message) => {
           toast(message, 'warn');
           setStreaming(false);
-          setStreamText('');
+          setStopped(assistant.trim().length > 0);
         },
       }, controller.signal);
     } catch (err) {
-      if (!controller.signal.aborted) toast(err instanceof Error ? err.message : 'AI 请求失败', 'warn');
+      if (!controller.signal.aborted) {
+        toast(err instanceof Error ? err.message : 'AI 请求失败', 'warn');
+        setStopped(assistant.trim().length > 0);
+      }
       setStreaming(false);
-      setStreamText('');
     } finally {
       abortRef.current = null;
     }
@@ -260,7 +372,7 @@ export function StudioPage() {
     const previousUser = [...messages.slice(0, index)].reverse().find((m) => m.role === 'user');
     if (!previousUser) return;
     setMessages((prev) => prev.filter((m) => m.id !== message.id));
-    void sendPrompt(previousUser.content, true);
+    void sendPrompt(previousUser.content, true, undefined, message.id);
   }
 
   async function refreshMessages() {
@@ -292,20 +404,36 @@ export function StudioPage() {
 
   function replaceSelection(message: ChatMessage) {
     if (!rewriteSource || !message.content) return;
-    if (!content.includes(rewriteSource)) {
-      toast('原文已变化，找不到刚才选中的段落', 'warn');
-      return;
+    const replacement = message.content.trim();
+    const editor = editorRef.current;
+    const range = selectionRangeRef.current;
+    let next = '';
+    if (editor && range && editor.contains(range.commonAncestorContainer)) {
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      document.execCommand('insertText', false, replacement);
+      next = editor.innerText;
+    } else {
+      const at = content.indexOf(rewriteSource);
+      if (at < 0) {
+        toast('原文已变化，找不到刚才选中的段落；请重新选中后再试', 'warn');
+        return;
+      }
+      next = `${content.slice(0, at)}${replacement}${content.slice(at + rewriteSource.length)}`;
+      if (editor) editor.innerHTML = htmlFromContent(next);
     }
-    const next = content.replace(rewriteSource, message.content.trim());
     if (activeId) void api.snapshotChapter(activeId, '改写前', content, title).then(refreshVersions);
     setContent(next);
     activeRef.current = { id: activeId, title, content: next };
-    if (editorRef.current) editorRef.current.innerHTML = htmlFromContent(next);
+    selectionRangeRef.current = null;
+    setSelectionText('');
     scheduleSave(title, next);
+    lastSnapshotContentRef.current = next;
     if (activeId) void api.snapshotChapter(activeId, 'AI 改写', next, title).then(refreshVersions);
     setRewriteSource('');
     setRewriteMessageId('');
-    toast('已替换选中段落');
+    toast('已替换选中的段落');
   }
 
   async function restoreVersion(version: ChapterVersion) {
@@ -319,6 +447,7 @@ export function StudioPage() {
       setProject((prev) => prev ? { ...prev, chapters: prev.chapters.map((c) => c.id === result.chapter.id ? result.chapter : c) } : prev);
       setVersions(result.versions);
       setCompareVersion(null);
+      lastSnapshotContentRef.current = result.chapter.content;
       setSaveState('saved');
       toast('已恢复这一版');
     } catch (err) {
@@ -328,7 +457,21 @@ export function StudioPage() {
 
   function stopStreaming() {
     abortRef.current?.abort();
+    const partial = streamText.trim();
+    if (partial) {
+      setMessages((prev) => [...prev, {
+        id: `stopped-${Date.now()}`,
+        projectId: project?.id || '',
+        chapterId: activeId,
+        role: 'assistant',
+        content: partial,
+        createdAt: new Date().toISOString(),
+        status: 'aborted',
+      }]);
+      toast('已停止生成；已生成的部分已保留为一条消息');
+    }
     setStreaming(false);
+    setStopped(false);
     setStreamText('');
   }
 
@@ -339,14 +482,23 @@ export function StudioPage() {
   async function runPlan() {
     if (!project || planningProject) return;
     setPlanningProject(true);
+    const controller = new AbortController();
+    planAbortRef.current = controller;
     try {
-      const { plan } = await api.planProject(project.id);
-      setPlanPreview(plan);
+      const { plan } = await api.planProject(project.id, controller.signal);
+      if (!controller.signal.aborted) setPlanPreview(plan);
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'AI 企划失败', 'warn');
+      if (!controller.signal.aborted) toast(err instanceof Error ? err.message : 'AI 企划失败', 'warn');
     } finally {
+      planAbortRef.current = null;
       setPlanningProject(false);
     }
+  }
+
+  function cancelPlan() {
+    planAbortRef.current?.abort();
+    setPlanningProject(false);
+    toast('已取消 AI 企划');
   }
 
   function applyPlan(updated: ProjectDetail) {
@@ -359,6 +511,10 @@ export function StudioPage() {
       activeRef.current = { id: first.id, title: first.title, content: first.content };
       if (editorRef.current) editorRef.current.innerHTML = htmlFromContent(first.content);
     }
+    if (first) {
+      lastSnapshotRef.current = { at: Date.now(), length: first.content.length };
+      lastSnapshotContentRef.current = first.content;
+    }
     setSaveState('saved');
     setPlanPreview(null);
     void refreshVersions();
@@ -367,14 +523,92 @@ export function StudioPage() {
 
   function insertText(text: string) {
     if (!text) return;
-    const next = content ? `${content}\n\n${text}` : text;
+    let next = content ? `${content}\n\n${text}` : text;
+    const editor = editorRef.current;
+    if (editor) {
+      editor.focus();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      document.execCommand('insertText', false, content ? `\n\n${text}` : text);
+      next = editor.innerText;
+    }
     if (activeId) void api.snapshotChapter(activeId, 'AI 插入前', content, title).then(refreshVersions);
     setContent(next);
     activeRef.current = { id: activeId, title, content: next };
-    if (editorRef.current) editorRef.current.innerHTML = htmlFromContent(next);
     scheduleSave(title, next);
+    lastSnapshotContentRef.current = next;
     if (activeId) void api.snapshotChapter(activeId, 'AI 插入', next, title).then(refreshVersions);
-    toast('已插入正文');
+    toast('已插入正文，可用 ⌘Z 撤销');
+  }
+
+  async function removeActiveChapter() {
+    if (!project || !activeChapter) return;
+    if (project.chapters.length <= 1) {
+      toast('至少保留一章；可以先新建一章再删除这一章', 'warn');
+      return;
+    }
+    let versionCount = 0;
+    try {
+      const { versions: rows } = await api.versions(project.id, activeChapter.id);
+      versionCount = rows.length;
+    } catch { /* count is best effort */ }
+    const ok = window.confirm(
+      `确定删除「${activeChapter.number} ${activeChapter.title}」？\n\n`
+      + `本章 ${versionCount} 条历史版本会一并删除，删除后无法恢复。\n`
+      + '正文不会进入回收站。',
+    );
+    if (!ok) return;
+    try {
+      await api.deleteChapter(activeChapter.id);
+      const remaining = project.chapters.filter((c) => c.id !== activeChapter.id);
+      const next = remaining[Math.min(project.chapters.findIndex((c) => c.id === activeChapter.id), remaining.length - 1)] || remaining[0];
+      const totalWords = remaining.reduce((sum, item) => sum + item.words, 0);
+      setProject((prev) => prev ? { ...prev, chapters: remaining, totalWords } : prev);
+      if (next) {
+        lastSnapshotContentRef.current = next.content;
+        setActiveId(next.id);
+        setTitle(next.title);
+        setContent(next.content);
+        activeRef.current = { id: next.id, title: next.title, content: next.content };
+        lastSnapshotRef.current = { at: Date.now(), length: next.content.length };
+        localStorage.setItem(`pw.chapter.${project.id}`, next.id);
+      }
+      setVersions([]);
+      toast('章节已删除');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '删除章节失败', 'warn');
+    }
+  }
+
+  async function exportBook(kind: 'docx' | 'md') {
+    if (!project || exporting) return;
+    setExporting(true);
+    try {
+      if (kind === 'docx') await api.downloadProjectDocx(project.id);
+      else await api.downloadProjectMarkdown(project.id);
+      toast(kind === 'docx' ? 'Word 已开始下载' : 'Markdown 已开始下载');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '导出失败', 'warn');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function backupProject() {
+    if (!project || exporting) return;
+    setExporting(true);
+    try {
+      await api.downloadProjectBundle(project.id);
+      toast('项目包已开始下载（不含 API Key）');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '备份失败', 'warn');
+    } finally {
+      setExporting(false);
+    }
   }
 
   async function selectModel(providerId: string, modelId: string) {
@@ -404,6 +638,20 @@ export function StudioPage() {
     });
     return groups;
   }, [project?.chapters]);
+
+  if (loadError) {
+    return (
+      <div className="loading-screen loading-screen--error">
+        <span className="brand__seal">私</span>
+        <strong>打不开这部作品</strong>
+        <p>{loadError}</p>
+        <div className="loading-screen__actions">
+          <button className="btn btn--primary btn--sm" type="button" onClick={() => setLoadNonce((n) => n + 1)}>重试</button>
+          <Link className="btn btn--ghost btn--sm" to="/">返回书房</Link>
+        </div>
+      </div>
+    );
+  }
 
   if (loading || !project) {
     return <div className="loading-screen"><span className="brand__seal">私</span><p>正在打开写作台…</p></div>;
@@ -440,8 +688,9 @@ export function StudioPage() {
         <span className={`tb-save`}><i style={{ background: saveState === 'saved' ? 'var(--jade)' : 'var(--gold)' }} />{saveState === 'saved' ? '已保存' : saveState === 'saving' ? '保存中…' : '有未保存修改'}</span>
         <span className="tb-words"><b>{formatNumber(project.totalWords)}</b> 字</span>
         <div className="tb-divider" />
-        <a className="icon-btn tb-icon" href={api.exportProjectDocx(project.id)} title="导出 Word"><Icon name="book" /></a>
-        <a className="icon-btn tb-icon" href={api.exportProject(project.id)} title="导出 Markdown"><Icon name="download" /></a>
+        <button className="icon-btn tb-icon" type="button" disabled={exporting} onClick={() => void exportBook('docx')} title="导出 Word"><Icon name="book" /></button>
+        <button className="icon-btn tb-icon" type="button" disabled={exporting} onClick={() => void exportBook('md')} title="导出 Markdown"><Icon name="download" /></button>
+        <button className="icon-btn tb-icon" type="button" disabled={exporting} onClick={() => void backupProject()} title="备份项目包（JSON，不含 API Key）"><Icon name="layers" /></button>
         <Link className="icon-btn tb-icon" to="/settings" title="设置"><Icon name="settings" /></Link>
         <button className="avatar" type="button" title={settings.profile?.name || '写作者'}>{(settings.profile?.name || '写作者').slice(0, 1)}</button>
       </div>
@@ -478,8 +727,8 @@ export function StudioPage() {
           <button className="chapter-item chapter-item--add" type="button" onClick={addChapter}><Icon name="plus" /> 新建章节</button>
         </div>
         <div className="panel-note">
-          <div className="panel-note__head"><span><Icon name="bookmark" /> 本地保存</span><span className="sync-dot">自动</span></div>
-          <p>自动保存已开启。所有修改会写入本地 SQLite，刷新后仍然保留。</p>
+          <div className="panel-note__head"><span><Icon name="bookmark" /> 本地保存</span><span className="sync-dot">{settings.prefs.autoSave ? '自动' : '手动'}</span></div>
+          <p>{settings.prefs.autoSave ? '自动保存已开启：停止输入 800ms 后写入本地 SQLite；⌘S 可立即保存。' : '自动保存已关闭：请用 ⌘S 保存；切换章节、关闭窗口前也会尝试保存。'}</p>
           <div className="panel-note__foot"><span># 本地优先</span><span># 自动保存</span><em>刚刚</em></div>
         </div>
       </div>
@@ -511,6 +760,8 @@ export function StudioPage() {
                   scheduleSave(title, next);
                 }}><Icon name="columns" /></button>
                 <button className="tool-btn tool-btn--ai" type="button" title="让 AI 续写" onClick={() => sendPrompt('续写下一段，保持当前文风。')}><Icon name="spark" /><span>AI</span></button>
+                <span className="tool-sep" />
+                <button className="tool-btn" type="button" title="删除本章（含历史版本）" onClick={() => void removeActiveChapter()}><Icon name="trash" /></button>
               </div>
               <div className="doc-toolbar__group doc-toolbar__group--right">
                 <span className="tool-meta">约 {Math.max(1, Math.ceil(words / 400))} 分钟阅读</span>
@@ -547,7 +798,7 @@ export function StudioPage() {
                     <div className="draft-start__actions">
                       {project.outline.beats.length === 0 && project.characters.length === 0 ? (
                         <>
-                          <button className="btn btn--primary btn--sm" type="button" disabled={planningProject || streaming} onClick={runPlan}><Icon name="map" /> {planningProject ? 'AI 正在企划…' : 'AI 企划这一本'}</button>
+                          <button className={`btn btn--sm ${planningProject ? 'btn--ghost' : 'btn--primary'}`} type="button" disabled={streaming} onClick={planningProject ? cancelPlan : runPlan}><Icon name="map" /> {planningProject ? '取消企划' : 'AI 企划这一本'}</button>
                           <button className="btn btn--ghost btn--sm" type="button" disabled={planningProject || streaming} onClick={() => sendPrompt('写这一章的开头。先用一个具体的动作或环境细节把读者带进来，不要解释背景。')}>跳过企划，直接写</button>
                         </>
                       ) : (
@@ -561,16 +812,16 @@ export function StudioPage() {
                   <ChapterEditor
                     chapter={{ ...activeChapter, title, content }}
                     editorRef={editorRef}
-                    onChange={(next) => { setSelectionText(''); setContent(next); scheduleSave(title, next); }}
-                    onSelectionChange={setSelectionText}
+                    onChange={(next) => { selectionRangeRef.current = null; setSelectionText(''); setContent(next); scheduleSave(title, next); }}
+                    onSelectionChange={(text, range) => { setSelectionText(text); selectionRangeRef.current = range; }}
                   />
                 ) : null}
                 <div className="ghost-block">
-                  <div className="ghost-block__head"><span><Icon name="spark" /> AI 建议续写</span><span className="ghost-block__hint">来自本地演示模型</span></div>
-                  <p>{streaming ? (streamText || '正在生成…') : '选中一段正文，或直接告诉 AI 你想推进什么。'}</p>
+                  <div className="ghost-block__head"><span><Icon name="spark" /> AI 建议续写</span><span className="ghost-block__hint">{streaming ? '正在生成' : stopped ? '已停止，内容可插入' : '等待你的指令'}</span></div>
+                  <p>{streamText || (streaming ? '正在生成…' : '选中一段正文，或直接告诉 AI 你想推进什么。')}</p>
                   <div className="ghost-block__actions">
                     <button className="btn btn--tiny btn--primary" type="button" disabled={streaming || !streamText} onClick={() => insertText(streamText)}>接受</button>
-                    <button className="btn btn--tiny btn--ghost" type="button" onClick={() => sendPrompt('换一个方向：让当前场景里的来客更不确定，不要解释原因。')}>换一个</button>
+                    <button className="btn btn--tiny btn--ghost" type="button" disabled={streaming} onClick={() => sendPrompt('换一个方向重写上一段，保持人物与情节不变，只改变叙述角度。')}>换一个</button>
                     <button className="btn btn--tiny btn--ghost" type="button" onClick={() => setStreamText('')}>忽略</button>
                   </div>
                 </div>
@@ -578,7 +829,7 @@ export function StudioPage() {
               </article>
             </div>
             <footer className="doc-statusbar">
-              <div className="doc-statusbar__left"><span className="status-dot" /><span>{saveState === 'saved' ? '已自动保存' : '保存中…'}</span><i /><span>本章 <b>{formatNumber(words)}</b> 字</span></div>
+              <div className="doc-statusbar__left"><span className="status-dot" /><span>{saveState === 'saved' ? '已保存' : saveState === 'saving' ? '保存中…' : '有未保存修改'}</span><i /><span>本章 <b>{formatNumber(words)}</b> 字</span></div>
               <div className="doc-statusbar__right"><span>本地 SQLite</span><i /><span>自动保存</span></div>
             </footer>
           </div>
@@ -642,7 +893,7 @@ export function StudioPage() {
                       <div key={message.id} className={`msg msg--${message.role === 'user' ? 'user' : 'ai'}`}>
                         {message.role === 'assistant' && <div className="msg__avatar"><Icon name="spark" /></div>}
                         <div className="msg__main">
-                          {message.role === 'assistant' && <div className="msg__name">共笔助手 <span>已保存到本地</span></div>}
+                          {message.role === 'assistant' && <div className="msg__name">共笔助手 <span>{message.status === 'aborted' ? '已停止 · 部分内容已保存' : '已保存到本地'}</span></div>}
                           <div className={`msg__bubble${message.role === 'assistant' ? ' msg__bubble--prose' : ''}`}>
                             {message.content.split('\n\n').map((p, i) => <p key={i}>{p}</p>)}
                           </div>
@@ -681,7 +932,7 @@ export function StudioPage() {
                       <button className="send-btn" type="button" onClick={() => { if (streaming) stopStreaming(); else void sendPrompt(); }} aria-label={streaming ? '停止' : '发送'}><Icon name={streaming ? 'x' : 'arrow-up'} /></button>
                     </div>
                   </div>
-                  <div className="composer-hint"><span>⌘ ↵ 发送</span><span>由 {currentProvider?.name || '本地演示'} 提供</span></div>
+                  <div className="composer-hint"><span>⌘ ↵ 发送</span><span>由 {currentProvider?.name || '当前模型'} 提供</span></div>
                 </div>
               </>
             ) : aiTab === 'check' ? (

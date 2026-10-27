@@ -1,0 +1,908 @@
+{
+  "runId": "优化项目-查漏补缺-004044",
+  "generatedBy": "architect",
+  "generatedAt": "2026-10-27T09:05:00+08:00",
+  "baseCommit": "8e95e43",
+  "rules": {
+    "ordering": "数组顺序即认领顺序；deps 全部 completed 才能开始",
+    "commit": "每个任务一个本地 commit，不 push，不触发 release.yml",
+    "noNewDeps": true,
+    "rollback": "单任务可 revert；同阶段任务合并为一个 squash commit 也可整体回退"
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "title": "数据库幂等种子 + app_meta + 加列迁移 + 旧库升级",
+      "role": "dba",
+      "phase": "P0",
+      "kind": "fix",
+      "priority": "P0",
+      "deps": [],
+      "paths": [
+        "software/src/server/db.ts",
+        "software/src/server/seed.ts"
+      ],
+      "acceptance": [
+        "migrate() 建 app_meta(key TEXT PK, value TEXT) 并写 schema_version=2，末尾执行 PRAGMA busy_timeout = 5000",
+        "ensureColumn 用 PRAGMA table_info 守卫后执行 ALTER TABLE ai_messages ADD COLUMN status TEXT NOT NULL DEFAULT 'done'",
+        "seedDatabase 的 insert 改为 INSERT OR IGNORE，settings 行同样 OR IGNORE",
+        "每次启动都执行 INSERT OR IGNORE 补齐 9 条 providers 与 settings 行（自愈手工删过的行）；app_meta.seeded 只记录首次完成时间，不再用 projects 计数判首启",
+        "seed 用事务包裹，失败 ROLLBACK 且不写 seeded，打印可读原因",
+        "删光 projects 后连启两次服务均成功，providers 恒为 9，无 UNIQUE 报错；手工 DELETE 一条 provider 后重启能自愈补回"
+      ],
+      "estimate": "4h",
+      "estimateHours": 4
+    },
+    {
+      "id": "T02",
+      "title": "启动容错 + /api/health 真实状态 + 503 守卫",
+      "role": "backend",
+      "phase": "P0",
+      "kind": "fix",
+      "priority": "P0",
+      "deps": [
+        "T01"
+      ],
+      "paths": [
+        "software/src/server/index.ts"
+      ],
+      "acceptance": [
+        "migrate() 失败时进程不退出，dbReady=false 并打印原因",
+        "dbReady=false 时 /api/* 返回 503 {error:'本地数据库未就绪：<原因>'}",
+        "GET /api/health 返回 {ok, db:{ready,schemaVersion,seededAt}, app:{version}}",
+        "app.version 来自 PW_APP_VERSION 或 software/package.json",
+        "把 studio.db 改成非法内容后启动，health 报 not ready 且不崩溃"
+      ],
+      "estimate": "2h",
+      "estimateHours": 2
+    },
+    {
+      "id": "T03",
+      "title": "AI 流中止/报错时持久化已产出文本 + regenerateOf 替换语义",
+      "role": "backend",
+      "phase": "P0",
+      "kind": "fix",
+      "priority": "P0",
+      "deps": [
+        "T01"
+      ],
+      "paths": [
+        "software/src/server/ai.ts",
+        "software/src/server/repository.ts",
+        "software/src/shared/types.ts"
+      ],
+      "acceptance": [
+        "4 个 stream* 均通过 onDelta 回调上报增量，streamAssistant 累计 partial",
+        "signal.aborted 且 partial 非空时 saveMessage({role:'assistant', content:partial, status:'aborted'}) 并 return",
+        "saveMessage/messageFromRow 支持并映射 status（默认 done）",
+        "AiStreamRequest 新增 regenerateOf?: string；服务端先删除该 assistant（校验 role 与 project）再落新消息，消息总数不变",
+        "新增 DELETE /api/messages/:id（404 语义）供丢弃半截消息",
+        "mock 流中途 abort 后库中存在一条 status='aborted' 且内容非空的 assistant",
+        "abort 判定必须含 !res.writableEnded；一次完整成功的 mock 流不得产生 status='aborted' 的消息"
+      ],
+      "estimate": "4h",
+      "estimateHours": 4
+    },
+    {
+      "id": "T04",
+      "title": "停止生成保留已生成文本（已中止卡片：插入/重试/丢弃）",
+      "role": "frontend",
+      "phase": "P0",
+      "kind": "fix",
+      "priority": "P0",
+      "deps": [
+        "T03"
+      ],
+      "paths": [
+        "software/src/client/pages/StudioPage.tsx",
+        "software/src/client/api.ts"
+      ],
+      "acceptance": [
+        "stopStreaming 不再 setStreamText('')",
+        "停止后已收文本转「已中止」卡片，含 插入正文 / 重新生成 / 丢弃 三个动作",
+        "收到 done{aborted} 时用真实 messageId 替换临时项",
+        "刷新页面后该条消息仍存在（来自 DB）",
+        "丢弃调用 api.deleteMessage，失败给出可读 toast"
+      ],
+      "estimate": "3h",
+      "estimateHours": 3
+    },
+    {
+      "id": "T05",
+      "title": "统一项目加载 hook + LoadError：消除四页永久转圈",
+      "role": "frontend",
+      "phase": "P0",
+      "kind": "feature",
+      "priority": "P0",
+      "deps": [],
+      "paths": [
+        "software/src/client/lib/useProjectDetail.ts",
+        "software/src/client/components/LoadError.tsx",
+        "software/src/client/pages/StudioPage.tsx",
+        "software/src/client/pages/OutlinePage.tsx",
+        "software/src/client/pages/CodexPage.tsx",
+        "software/src/client/pages/ScreenplayPage.tsx"
+      ],
+      "acceptance": [
+        "hook 返回 {project, loading, error, reload}，区分 404（作品不存在）与网络/服务未起",
+        "Studio/Outline/Codex/Screenplay 加载失败均渲染错误卡（返回作品库 + 重试），不再无限 loading",
+        "Screenplay 不再静默换成库里第一个剧本：id 有效但不存在走错误态；缺 id 时显式导航并 toast",
+        "访问 /project/not-exist 四页 1 秒内可返回作品库"
+      ],
+      "estimate": "5h",
+      "estimateHours": 5
+    },
+    {
+      "id": "T06",
+      "title": "全局 ErrorBoundary，杜绝白屏",
+      "role": "frontend",
+      "phase": "P0",
+      "kind": "feature",
+      "priority": "P0",
+      "deps": [],
+      "paths": [
+        "software/src/client/main.tsx",
+        "software/src/client/components/ErrorBoundary.tsx"
+      ],
+      "acceptance": [
+        "渲染异常时显示「界面出错」卡片：重新加载 + 复制错误详情",
+        "ErrorBoundary 包住 Router 与 AppProvider，Toast/Router 不因此卸载",
+        "临时注入 throw 的测试组件可被捕获且不白屏"
+      ],
+      "estimate": "1h",
+      "estimateHours": 1
+    },
+    {
+      "id": "T07",
+      "title": "新建作品状态机：创建/企划可取消、失败可重试、不留孤儿项目",
+      "role": "frontend",
+      "phase": "P1-A",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [
+        "T05"
+      ],
+      "paths": [
+        "software/src/client/components/NewProjectModal.tsx"
+      ],
+      "acceptance": [
+        "状态机 idle→creating→planning→review→done|failed，creating/planning 期间禁用 Esc 与遮罩关闭",
+        "planning 期间有「跳过企划，直接写作」（abort + navigate）与 failed 时的「重试企划」",
+        "关闭/卸载时若已创建作品，必须导航进该项目，不产生孤儿项目",
+        "企划失败弹窗内显示原因，且作品已创建可直接进入写作",
+        "体裁默认取 settings.prefs.genre，找不到才回退硬映射",
+        "全部请求带 AbortController，abort 后服务端 2 秒内释放"
+      ],
+      "estimate": "5h",
+      "estimateHours": 5
+    },
+    {
+      "id": "T08",
+      "title": "企划接口可中止 + 100s 超时 504",
+      "role": "backend",
+      "phase": "P1-A",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [],
+      "paths": [
+        "software/src/server/index.ts",
+        "software/src/server/plan.ts"
+      ],
+      "acceptance": [
+        "POST /api/projects/:id/plan 在 res close 时 abort 下游模型请求",
+        "超过 100s 返回 504 {error:'企划生成超时，请重试'}",
+        "abort 后不再写库、不再占用连接"
+      ],
+      "estimate": "2h",
+      "estimateHours": 2
+    },
+    {
+      "id": "T09",
+      "title": "企划评审弹窗：Esc 关闭、跳过进入、应用失败可见、覆盖确认",
+      "role": "frontend",
+      "phase": "P1-A",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [
+        "T07"
+      ],
+      "paths": [
+        "software/src/client/components/PlanReviewModal.tsx"
+      ],
+      "acceptance": [
+        "Esc 关闭（preview 无破坏）并提示「企划未写入作品」",
+        "提供「跳过，直接写作」进入作品页",
+        "apply 失败显示弹窗内错误且保留勾选状态",
+        "应用前二次确认「将替换现有大纲与人物」",
+        "regenerate 失败 toast + 按钮恢复可点"
+      ],
+      "estimate": "2h",
+      "estimateHours": 2
+    },
+    {
+      "id": "T10",
+      "title": "草稿兜底：localStorage + keepalive flush + 恢复横幅 + autoSave 生效",
+      "role": "frontend",
+      "phase": "P1-B",
+      "kind": "feature",
+      "priority": "P1",
+      "deps": [
+        "T05"
+      ],
+      "paths": [
+        "software/src/client/lib/draft.ts",
+        "software/src/client/pages/StudioPage.tsx"
+      ],
+      "acceptance": [
+        "onInput 同步写 localStorage['pw.draft.<chapterId>']={content,title,at}",
+        "visibilitychange(hidden) 与 pagehide 触发 saveNow({keepalive:true})",
+        "打开章节时若草稿更新且内容不同，显示「恢复草稿 / 丢弃」横幅",
+        "prefs.autoSave=false 时完全不自动写库，状态区显示「自动保存已关闭」",
+        "切章 await saveNow 完成后再切换；生成中切章先 abort",
+        "保存失败显示常驻条「保存失败，点击重试」，不覆盖本地草稿"
+      ],
+      "estimate": "5h",
+      "estimateHours": 5
+    },
+    {
+      "id": "T11",
+      "title": "⌘S 保存 + 快捷键表与实现一致",
+      "role": "frontend",
+      "phase": "P1-B",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [
+        "T10"
+      ],
+      "paths": [
+        "software/src/client/pages/StudioPage.tsx",
+        "software/src/client/pages/SettingsPage.tsx"
+      ],
+      "acceptance": [
+        "写作台注册全局 keydown：⌘/Ctrl+S 保存并 toast「已保存」",
+        "⌘/Ctrl+Enter 发送保留；不拦截其他系统快捷键",
+        "SettingsPage 快捷键表只列真实实现并注明「写作台内生效」",
+        "表格每条都能实测触发"
+      ],
+      "estimate": "2h",
+      "estimateHours": 2
+    },
+    {
+      "id": "T12",
+      "title": "AI 插入/替换保原生撤销 + 编辑器外部同步修复",
+      "role": "frontend",
+      "phase": "P1-B",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [],
+      "paths": [
+        "software/src/client/lib/editorCommands.ts",
+        "software/src/client/pages/StudioPage.tsx",
+        "software/src/client/components/ChapterEditor.tsx"
+      ],
+      "acceptance": [
+        "新增 insertAtCursor/replaceRange，基于 execCommand('insertText')",
+        "AI 插入与替换选中改走命令；选区丢失回退 innerHTML 并 toast「该步不可撤销，可用版本记录回退」",
+        "ChapterEditor 用 lastSyncedContent 判定：外部内容变化且编辑器未聚焦才回灌",
+        "AI 插入后 ⌘Z 可撤销；恢复版本后正文立刻更新且不覆盖正在输入"
+      ],
+      "estimate": "5h",
+      "estimateHours": 5
+    },
+    {
+      "id": "T13",
+      "title": "选区改写按偏移精确替换（重复文本不再改错位置）",
+      "role": "frontend",
+      "phase": "P1-B",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [
+        "T12"
+      ],
+      "paths": [
+        "software/src/client/lib/selection.ts",
+        "software/src/client/pages/StudioPage.tsx"
+      ],
+      "acceptance": [
+        "记录 {start,end,text}（Range 克隆计文本偏移）",
+        "替换前校验 content.slice(start,end)===text，失败退化为第 N 次出现定位",
+        "两次定位都失败时 toast「正文已变化，请重新选择」且不写入",
+        "同一句出现 3 次时改写第 3 处，只有第 3 处变化"
+      ],
+      "estimate": "3h",
+      "estimateHours": 3
+    },
+    {
+      "id": "T14",
+      "title": "AI 消息严格分章 + regenerate 替换（不再重复 assistant）",
+      "role": "backend",
+      "phase": "P1-B",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [
+        "T03"
+      ],
+      "paths": [
+        "software/src/server/repository.ts",
+        "software/src/client/api.ts",
+        "software/src/client/pages/StudioPage.tsx",
+        "software/src/shared/types.ts"
+      ],
+      "acceptance": [
+        "listMessages 在 chapterId 存在时使用 chapter_id = ?（去掉 OR IS NULL）",
+        "客户端 regenerate 传 regenerateOf，去掉前端 filter hack",
+        "api.streamChat 透传 regenerateOf",
+        "切章后对话不串；重新生成后消息数不变且内容变化",
+        "software/scripts/api-test.mjs:217 断言同步改为「数量不变 + 新 messageId」"
+      ],
+      "estimate": "4h",
+      "estimateHours": 4
+    },
+    {
+      "id": "T15",
+      "title": "分镜支持强制重新生成（二次点击不再无反应）",
+      "role": "frontend",
+      "phase": "P1-B",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [
+        "T16"
+      ],
+      "paths": [
+        "software/src/client/pages/ScreenplayPage.tsx",
+        "software/src/client/api.ts"
+      ],
+      "acceptance": [
+        "已有分镜时按钮文案为「重新生成分镜」",
+        "点击发送 regenerate:true 并显示加载态",
+        "生成后刷新列表；连点两次第二次内容变化且仍为 6 条"
+      ],
+      "estimate": "1.5h",
+      "estimateHours": 1.5
+    },
+    {
+      "id": "T16",
+      "title": "generateShotsForScene 支持覆盖 + 修正 404 语义",
+      "role": "backend",
+      "phase": "P1-B",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [],
+      "paths": [
+        "software/src/server/repository.ts",
+        "software/src/server/index.ts"
+      ],
+      "acceptance": [
+        "regenerate=true 时事务内删除旧 shots 再生成 6 条",
+        "场次不存在才 404「场次不存在」，不再用 shots.length===0 冒充",
+        "返回 {shots}"
+      ],
+      "estimate": "1.5h",
+      "estimateHours": 1.5
+    },
+    {
+      "id": "T17",
+      "title": "手写自动快照（节流/阈值）+ 版本按来源裁剪",
+      "role": "backend",
+      "phase": "P1-C",
+      "kind": "feature",
+      "priority": "P1",
+      "deps": [
+        "T01"
+      ],
+      "paths": [
+        "software/src/server/repository.ts"
+      ],
+      "acceptance": [
+        "updateChapter 末尾调用 maybeSnapshotChapter(source='自动存档')",
+        "触发条件：距最近版本≥10 分钟且字数变化≥200；或距最近版本≥30 分钟；或原≥500 字被清空",
+        "内容相同不新增（沿用 createChapterVersion 去重）",
+        "裁剪超 40 条时先删最旧自动存档，再删最旧任意",
+        "连续编辑 3 分钟产生 ≤1 条自动版本；手动版本在裁剪后仍存在"
+      ],
+      "estimate": "3h",
+      "estimateHours": 3
+    },
+    {
+      "id": "T18",
+      "title": "版本面板可用性：手动存档、自动徽章、错误不静默、恢复提示",
+      "role": "frontend",
+      "phase": "P1-C",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [
+        "T17"
+      ],
+      "paths": [
+        "software/src/client/pages/StudioPage.tsx",
+        "software/src/client/api.ts"
+      ],
+      "acceptance": [
+        "版本 tab 增加「保存一个版本」按钮（source=手动）",
+        "自动版本显示「自动」徽章；标注「仅保留最近 40 版」",
+        "refreshVersions 失败 toast + 重试，不再静默",
+        "恢复成功后 toast「已恢复到 <时间>，恢复前内容已存为一条版本」",
+        "手写 300 字后版本 tab 出现自动版本"
+      ],
+      "estimate": "2h",
+      "estimateHours": 2
+    },
+    {
+      "id": "T19",
+      "title": "导出支持整本/当前卷/当前章 + 空作品 400 可读错误",
+      "role": "backend",
+      "phase": "P1-D",
+      "kind": "feature",
+      "priority": "P1",
+      "deps": [],
+      "paths": [
+        "software/src/server/index.ts",
+        "software/src/server/repository.ts",
+        "software/src/server/docx.ts"
+      ],
+      "acceptance": [
+        "GET /api/projects/:id/export 与 /export.docx 支持 scope=book|chapter|volume + chapterId/volume",
+        "scope 校验失败 400；章节不存在 404",
+        "无正文（或选定范围无正文）返回 400 {error:'这部作品还没有正文可导出'}",
+        "单章导出只包含该章内容；docx 与 md 内容一致",
+        "docx 仍接收完整 ProjectDetail 形状但 chapters 只含选中范围，totalWords 与导出内容一致"
+      ],
+      "estimate": "3h",
+      "estimateHours": 3
+    },
+    {
+      "id": "T20",
+      "title": "导出改 fetch+Blob + 范围选择弹窗 + 失败不导航",
+      "role": "frontend",
+      "phase": "P1-D",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [
+        "T19"
+      ],
+      "paths": [
+        "software/src/client/api.ts",
+        "software/src/client/components/ExportDialog.tsx",
+        "software/src/client/pages/StudioPage.tsx",
+        "software/src/client/pages/ScreenplayPage.tsx"
+      ],
+      "acceptance": [
+        "api.exportBlob 用 fetch，非 2xx 解析 {error} 抛错，成功后 createObjectURL+revoke",
+        "Studio 与 Screenplay 的裸 <a href> 全部移除",
+        "导出弹窗可选 整本/当前卷/当前章；无正文时按钮禁用并说明",
+        "失败时 toast 显示服务端原因，页面不跳转、不丢未保存内容",
+        "成功导出文件名含书名（Playwright download 断言）"
+      ],
+      "estimate": "3h",
+      "estimateHours": 3
+    },
+    {
+      "id": "T21",
+      "title": "本地备份/恢复后端（JSON 全库 + .secret + 恢复前自动备份 + 事务重灌）",
+      "role": "backend",
+      "phase": "P1-D",
+      "kind": "feature",
+      "priority": "P1",
+      "deps": [
+        "T01",
+        "T02"
+      ],
+      "paths": [
+        "software/src/server/index.ts",
+        "software/src/server/repository.ts",
+        "software/src/server/crypto.ts"
+      ],
+      "acceptance": [
+        "GET /api/backup 返回 {format,formatVersion,createdAt,app,data(12 表),secrets}，响应头 X-Backup-Contains-Secrets 与 attachment 文件名",
+        "POST /api/restore 校验 format/formatVersion/表结构，缺失 400",
+        "自动备份用 VACUUM INTO 或先 PRAGMA wal_checkpoint(TRUNCATE) 再复制 studio.db（WAL 中未 checkpoint 的写入不得丢）",
+        "恢复前复制 studio.db 与 .secret 到 data/backups/pre-restore-<ts>.*",
+        "事务内清表并按备份写入（不动 app_meta），失败 ROLLBACK 且库原样",
+        "写入设置前用 normalizeSettings() 规整形状（缺 prefs/默认值也能恢复）",
+        "非空库需 ?force=1 否则 409；并发第二个恢复请求 409（BEGIN IMMEDIATE）",
+        "restore 路由独立 express.json({limit:'256mb'})，不影响全局 3mb",
+        "恢复含 secrets 时响应 requiresRestart:true（crypto secret 为模块级常量，需重启生效，见 PLAN-NOTES R4）",
+        "备份→清库→恢复后作品/章节/版本/消息/设置齐全；坏 JSON 400 且库不变"
+      ],
+      "estimate": "5h",
+      "estimateHours": 5
+    },
+    {
+      "id": "T22",
+      "title": "设置-数据页：备份下载 + 恢复流程 UI（敏感提示、二次确认、reload）",
+      "role": "frontend",
+      "phase": "P1-D",
+      "kind": "feature",
+      "priority": "P1",
+      "deps": [
+        "T21"
+      ],
+      "paths": [
+        "software/src/client/pages/SettingsPage.tsx",
+        "software/src/client/api.ts"
+      ],
+      "acceptance": [
+        "提供「立即备份」下载 JSON，并提示「包含可解密 API Key 的密钥」，提供勾选剔除密钥",
+        "提供「从备份恢复」：选文件→显示 counts 预览→输入「恢复」二次确认→上传",
+        "恢复成功后提示预备份路径并 location.reload()",
+        "失败显示服务端 error，不清空当前数据"
+      ],
+      "estimate": "3h",
+      "estimateHours": 3
+    },
+    {
+      "id": "T23",
+      "title": "设置页真实化：真实版本号、真实连接检查、开关去留",
+      "role": "frontend",
+      "phase": "P1-E",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [
+        "T02",
+        "T24"
+      ],
+      "paths": [
+        "software/src/client/pages/SettingsPage.tsx",
+        "software/src/client/context/AppContext.tsx",
+        "software/src/client/api.ts"
+      ],
+      "acceptance": [
+        "版本号来自 bootstrap.app.version，删除硬编码「v0.1 · 全栈版」",
+        "检查连接改为真实 GET /api/health，展示数据库/静态资源/版本三项真实结果",
+        "删除假进度条与假「已连接」徽章",
+        "autoSave 与 streaming 真实生效；pov/genre/aiLength/style 注入 prompt；fallbackModel 按 T24 结论接线或移除",
+        "UI 上不残留任何无消费方的开关"
+      ],
+      "estimate": "4h",
+      "estimateHours": 4
+    },
+    {
+      "id": "T24",
+      "title": "供应商状态真实化 + 写作偏好注入 prompt + fallback 单次重试",
+      "role": "backend",
+      "phase": "P1-E",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [],
+      "paths": [
+        "software/src/server/repository.ts",
+        "software/src/server/ai.ts",
+        "software/src/server/index.ts",
+        "software/src/shared/types.ts"
+      ],
+      "acceptance": [
+        "testProviderConnection('mock') 返回 {ok:true, kind:'mock', message:'内置演示模型：不发起网络请求'}",
+        "非 mock 失败保留真实原因（HTTP 状态/超时 10s）",
+        "buildWritingContext 注入 prefs.pov/genre/aiLength/style 与目标字数",
+        "fallbackModel：首个 delta 前失败用备选重试一次；若成本超 2h 则从 UI 移除该项并记录",
+        "bootstrap 返回 app:{version,packaged}"
+      ],
+      "estimate": "4h",
+      "estimateHours": 4
+    },
+    {
+      "id": "T25",
+      "title": "假数据清理：引文/评分/进度/统计/提示语",
+      "role": "ui",
+      "phase": "P1-E",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [],
+      "paths": [
+        "software/src/client/pages/LibraryPage.tsx",
+        "software/src/client/pages/CodexPage.tsx",
+        "software/src/client/pages/OutlinePage.tsx",
+        "software/src/client/pages/StudioPage.tsx"
+      ],
+      "acceptance": [
+        "LibraryPage 写死引文改为 hero.description（无则不渲染该块）",
+        "LibraryPage「自动保存开启」读 prefs.autoSave",
+        "CodexPage「长期记忆·已同步」「AI 已索引 N 位人物」改为真实或中性文案；出场数/视角取真实值或 —",
+        "OutlinePage 张力曲线与弧光百分比标注「示意」或按真实数据渲染，删除写死的章节号标签",
+        "StudioPage ghost-block 不再写「来自本地演示模型」，显示当前 provider/model",
+        "全仓 grep 硬编码假数据文案 0 命中"
+      ],
+      "estimate": "5h",
+      "estimateHours": 5
+    },
+    {
+      "id": "T26",
+      "title": "五种删除 API：章节/人物/场次/分镜/伏笔（级联 + 字数重算 + 404）",
+      "role": "backend",
+      "phase": "P1-F",
+      "kind": "feature",
+      "priority": "P1",
+      "deps": [
+        "T01"
+      ],
+      "paths": [
+        "software/src/server/repository.ts",
+        "software/src/server/index.ts"
+      ],
+      "acceptance": [
+        "删除章节事务内先删 ai_messages 再删章节（版本走 FK CASCADE）并重算 total_words，返回 nextChapterId",
+        "deleteScene 返回 deletedShots；场次号不重排",
+        "五种删除均校验归属：不属于该项目一律 404",
+        "二次删除 404；删除后 total_words 与章节字数一致"
+      ],
+      "estimate": "4h",
+      "estimateHours": 4
+    },
+    {
+      "id": "T27",
+      "title": "删除 UI 与确认弹窗（章节需输入标题末两字）",
+      "role": "frontend",
+      "phase": "P1-F",
+      "kind": "feature",
+      "priority": "P1",
+      "deps": [
+        "T26"
+      ],
+      "paths": [
+        "software/src/client/components/ConfirmDelete.tsx",
+        "software/src/client/pages/StudioPage.tsx",
+        "software/src/client/pages/CodexPage.tsx",
+        "software/src/client/pages/ScreenplayPage.tsx",
+        "software/src/client/api.ts"
+      ],
+      "acceptance": [
+        "章节删除弹窗展示字数/首段 100 字/N 条历史版本将一并删除，输入标题末两字才可点删除",
+        "人物/伏笔/分镜普通二次确认；场次提示连带分镜数",
+        "删除当前章后跳下一章，最后一章删除后进入空态引导",
+        "五种删除全部可在 UI 完成且刷新后不复活"
+      ],
+      "estimate": "5h",
+      "estimateHours": 5
+    },
+    {
+      "id": "T28",
+      "title": "新建章节防重入（快速双击只加一章）",
+      "role": "frontend",
+      "phase": "P1-F",
+      "kind": "fix",
+      "priority": "P1",
+      "deps": [
+        "T27"
+      ],
+      "paths": [
+        "software/src/client/pages/StudioPage.tsx"
+      ],
+      "acceptance": [
+        "creatingChapter 锁覆盖三处入口且按钮 disabled",
+        "快速双击「新建章节」只增加 1 章",
+        "失败时解锁并 toast 原因"
+      ],
+      "estimate": "1h",
+      "estimateHours": 1
+    },
+    {
+      "id": "T29",
+      "title": "归档可见可撤销：列表筛选 + 取消归档入口",
+      "role": "frontend",
+      "phase": "P2",
+      "kind": "feature",
+      "priority": "P2",
+      "deps": [],
+      "paths": [
+        "software/src/client/pages/LibraryPage.tsx",
+        "software/src/client/components/ProjectSettingsModal.tsx"
+      ],
+      "acceptance": [
+        "默认显示创作中+已完结，新增「显示已归档」开关并持久化到 localStorage",
+        "已归档卡片打灰标",
+        "已归档作品设置里按钮为「取消归档」并写回创作中",
+        "归档 toast 提示找回路径"
+      ],
+      "estimate": "2h",
+      "estimateHours": 2
+    },
+    {
+      "id": "T30",
+      "title": "Rail 导航不串作品",
+      "role": "frontend",
+      "phase": "P2",
+      "kind": "fix",
+      "priority": "P2",
+      "deps": [
+        "T05"
+      ],
+      "paths": [
+        "software/src/client/components/Rail.tsx"
+      ],
+      "acceptance": [
+        "导航目标以当前路由 projectId 为准",
+        "剧本项目下点「写作台」不再跳到别的作品，改为禁用态 + 提示",
+        "无最近作品时给「新建作品」入口"
+      ],
+      "estimate": "1.5h",
+      "estimateHours": 1.5
+    },
+    {
+      "id": "T31",
+      "title": "Onboarding 准入文案一致性（不新增跳过模式）",
+      "role": "ui",
+      "phase": "P2",
+      "kind": "fix",
+      "priority": "P2",
+      "deps": [],
+      "paths": [
+        "software/src/client/pages/LibraryPage.tsx",
+        "software/src/client/pages/OnboardingPage.tsx",
+        "software/src/client/pages/SettingsPage.tsx"
+      ],
+      "acceptance": [
+        "三处文案统一为「首次需连接供应商并填 API Key；内置演示模型仅体验用，不能作为首次配置」",
+        "删除「没有 Key 也能用」类承诺（grep 0 命中）",
+        "OnboardingPage 校验失败给出下一步（去哪个供应商拿 Key）",
+        "文案与 canFinish 逻辑一致，无新增跳过/匿名入口"
+      ],
+      "estimate": "2h",
+      "estimateHours": 2
+    },
+    {
+      "id": "T32",
+      "title": "大纲草稿守卫 + 新节拍落当前幕",
+      "role": "frontend",
+      "phase": "P2",
+      "kind": "fix",
+      "priority": "P2",
+      "deps": [
+        "T05"
+      ],
+      "paths": [
+        "software/src/client/pages/OutlinePage.tsx"
+      ],
+      "acceptance": [
+        "切换场景前若 dirty 给确认，避免静默覆盖",
+        "新增节拍进入当前选中的幕（不再固定 acts[1]）",
+        "移除 i===1 的假「当前幕」高亮，改为真实选中态",
+        "不新增幕的增删改"
+      ],
+      "estimate": "3h",
+      "estimateHours": 3
+    },
+    {
+      "id": "T33",
+      "title": "桌面最小修复：窗口尺寸记忆、生产菜单、server 退出弹窗",
+      "role": "devops",
+      "phase": "P2",
+      "kind": "fix",
+      "priority": "P2",
+      "deps": [],
+      "paths": [
+        "desktop/main.cjs"
+      ],
+      "acceptance": [
+        "窗口尺寸/位置写入 userData/data/window-state.json 并在下次启动恢复，越界回退默认",
+        "生产包隐藏 toggleDevTools；菜单增加「关于（版本）」",
+        "serverProcess 非预期退出弹 dialog：重启服务 / 退出",
+        "删除无监听者的 server-exited 死代码",
+        "保留 before-quit SIGTERM→1200ms→SIGKILL；不新增 preload/IPC"
+      ],
+      "estimate": "3h",
+      "estimateHours": 3
+    },
+    {
+      "id": "T34",
+      "title": "桌面打包冒烟脚本扩展",
+      "role": "devops",
+      "phase": "P2",
+      "kind": "test",
+      "priority": "P2",
+      "deps": [
+        "T33"
+      ],
+      "paths": [
+        "scripts/desktop-test.mjs"
+      ],
+      "acceptance": [
+        "断言进程启动、/api/health 200、窗口标题含「私家写手」",
+        "退出后按 PW_DATA_DIR pkill 兜底确认无残留进程",
+        "失败信息指出具体环节（启动/健康/窗口/退出）"
+      ],
+      "estimate": "2h",
+      "estimateHours": 2
+    },
+    {
+      "id": "T35",
+      "title": "API 回归扩展（API-01~API-14）",
+      "role": "qa",
+      "phase": "交付",
+      "kind": "test",
+      "priority": "P1",
+      "deps": [
+        "T01",
+        "T03",
+        "T14",
+        "T17",
+        "T19",
+        "T21",
+        "T26"
+      ],
+      "paths": [
+        "software/scripts/api-test.mjs"
+      ],
+      "acceptance": [
+        "新增 14 组断言覆盖 PLAN §7.1 全部条目",
+        "删空重启用「同 dataDir 重启服务」实现并有超时保护",
+        "旧库升级用临时库构造旧 schema 验证",
+        "原有断言全部保留（除 regenerate 断言按 T14 改法）",
+        "pnpm test 在 120s 内完成且可重复运行"
+      ],
+      "estimate": "8h",
+      "estimateHours": 8
+    },
+    {
+      "id": "T36",
+      "title": "UI E2E 扩展（UI-01~UI-12）",
+      "role": "qa",
+      "phase": "交付",
+      "kind": "test",
+      "priority": "P1",
+      "deps": [
+        "T05",
+        "T10",
+        "T12",
+        "T20",
+        "T22",
+        "T27"
+      ],
+      "paths": [
+        "software/scripts/ui-test.mjs"
+      ],
+      "acceptance": [
+        "12 个场景覆盖 PLAN §7.2，含草稿恢复、⌘S、⌘Z、选区精确定位、断开服务导出失败",
+        "下载断言使用 waitForEvent('download')",
+        "每场景失败即截图到 screenshots/",
+        "pnpm test:ui 连续两次运行均通过"
+      ],
+      "estimate": "8h",
+      "estimateHours": 8
+    },
+    {
+      "id": "T37",
+      "title": "独立审查（P0 全绿、无回归、无假成功残留）",
+      "role": "reviewer",
+      "phase": "交付",
+      "kind": "review",
+      "priority": "P0",
+      "deps": [
+        "T35",
+        "T36"
+      ],
+      "paths": [
+        "team/优化项目-查漏补缺-004044/REVIEW.md"
+      ],
+      "acceptance": [
+        "逐条核对 PLAN §7 测试矩阵与 DECISIONS D1-D5 落地",
+        "重点复核：删除事务完整性、restore 回滚安全、abort 落库时机、选区定位边界",
+        "无 data 目录被清空、无密钥进日志、无 <a href> 残留导出",
+        "verdict=pass 或开 repair-N 并列出阻塞项"
+      ],
+      "estimate": "4h",
+      "estimateHours": 4
+    },
+    {
+      "id": "T38",
+      "title": "文档更新：REPOWIKI 接口/备份说明/已知限制",
+      "role": "docs",
+      "phase": "交付",
+      "kind": "docs",
+      "priority": "P2",
+      "deps": [
+        "T37"
+      ],
+      "paths": [
+        "team/优化项目-查漏补缺-004044/REPOWIKI.md"
+      ],
+      "acceptance": [
+        "新增/变更路由表更新（删除族、导出 scope、backup/restore、health、regenerateOf）",
+        "写明 app_meta/schema_version 与旧库升级方式",
+        "写明备份文件结构、密钥含义、恢复前自动备份路径",
+        "写明知视频率与十条已知限制（PLAN §10）"
+      ],
+      "estimate": "2h",
+      "estimateHours": 2
+    }
+  ]
+}

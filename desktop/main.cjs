@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, shell, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
@@ -19,6 +19,38 @@ let serverPort = null;
 let serverLog = null;
 let updatePromptOpen = false;
 let updateRequested = false;
+let closeRequestWindow = null;
+let closeFallbackTimer = null;
+let approvedCloseWindow = null;
+
+function approveWindowClose(win) {
+  if (!win || win.isDestroyed()) return;
+  approvedCloseWindow = win;
+  if (closeFallbackTimer) { clearTimeout(closeFallbackTimer); closeFallbackTimer = null; }
+  if (closeRequestWindow === win) closeRequestWindow = null;
+  win.close();
+}
+
+function requestWindowClose(win) {
+  if (closeRequestWindow || !win || win.isDestroyed()) return;
+  closeRequestWindow = win;
+  try { win.webContents.send('inkquay:request-close'); } catch { /* window already gone */ }
+  // 5s 是兜底：渲染层卡死时也要能退出；正常 flush 通常 <100ms。
+  closeFallbackTimer = setTimeout(() => approveWindowClose(win), 5000);
+}
+
+ipcMain.on('inkquay:flush-complete', (event) => {
+  const win = closeRequestWindow;
+  if (win && !win.isDestroyed() && event.sender === win.webContents) approveWindowClose(win);
+});
+
+ipcMain.on('inkquay:flush-cancel', (event) => {
+  const win = closeRequestWindow;
+  if (!win || win.isDestroyed() || event.sender !== win.webContents) return;
+  if (closeFallbackTimer) { clearTimeout(closeFallbackTimer); closeFallbackTimer = null; }
+  closeRequestWindow = null;
+  win.focus();
+});
 
 function writeLog(line) {
   try {
@@ -239,6 +271,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   });
   mainWindow.once('ready-to-show', () => mainWindow.show());
@@ -246,13 +279,27 @@ function createWindow() {
     if (/^https?:/.test(url)) void shell.openExternal(url);
     return { action: 'deny' };
   });
+  mainWindow.webContents.on('will-prevent-unload', (event) => {
+    // 页面用 beforeunload 拦“未保存”提示；关闭流程已经由 IPC 先 flush 再 close，
+    // 这里放行浏览器的二次拦截，避免 Electron 没有原生确认框时窗口关不掉。
+    event.preventDefault();
+  });
   mainWindow.webContents.on('will-navigate', (event, url) => {
     if (!serverPort || !url.startsWith(`http://127.0.0.1:${serverPort}`)) {
       event.preventDefault();
       if (/^https?:/.test(url)) void shell.openExternal(url);
     }
   });
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('close', (event) => {
+    if (approvedCloseWindow === mainWindow) return;
+    event.preventDefault();
+    requestWindowClose(mainWindow);
+  });
+  mainWindow.on('closed', () => {
+    if (closeRequestWindow === mainWindow) closeRequestWindow = null;
+    if (approvedCloseWindow === mainWindow) approvedCloseWindow = null;
+    mainWindow = null;
+  });
   return mainWindow.loadURL(`http://127.0.0.1:${serverPort}/`);
 }
 

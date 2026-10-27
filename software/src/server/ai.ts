@@ -6,6 +6,7 @@ import {
   getProjectDetail,
   getSettings,
   saveMessage,
+  deleteMessage,
 } from './repository.ts';
 import { decryptSecret } from './crypto.ts';
 import { countWords } from './utils.ts';
@@ -13,6 +14,7 @@ import { countWords } from './utils.ts';
 interface StreamOptions extends Omit<AiStreamRequest, 'modelId'> {
   modelId: string;
   signal: AbortSignal;
+  onDelta?: (delta: string) => void;
 }
 
 function writeEvent(res: Response, payload: Record<string, unknown>) {
@@ -66,10 +68,11 @@ async function streamMock(res: Response, opts: StreamOptions, project: ProjectDe
     if (opts.signal.aborted) break;
     const chunk = text.slice(i, i + 2);
     sent += chunk;
+    opts.onDelta?.(chunk);
     writeEvent(res, { type: 'delta', text: chunk });
     await new Promise((resolve) => setTimeout(resolve, 24));
   }
-  return { provider, model, text: sent };
+  return { provider, model, text: sent, aborted: opts.signal.aborted };
 }
 
 async function streamOpenAI(res: Response, opts: StreamOptions, provider: Record<string, any>, key: string, system: string) {
@@ -114,6 +117,7 @@ async function streamOpenAI(res: Response, opts: StreamOptions, provider: Record
         const delta = json.choices?.[0]?.delta?.content || json.choices?.[0]?.text || '';
         if (delta) {
           text += delta;
+          opts.onDelta?.(delta);
           writeEvent(res, { type: 'delta', text: delta });
         }
       } catch {
@@ -167,6 +171,7 @@ async function streamAnthropic(res: Response, opts: StreamOptions, provider: Rec
         const delta = json.type === 'content_block_delta' ? json.delta?.text || '' : '';
         if (delta) {
           text += delta;
+          opts.onDelta?.(delta);
           writeEvent(res, { type: 'delta', text: delta });
         }
       } catch {
@@ -215,6 +220,7 @@ async function streamGoogle(res: Response, opts: StreamOptions, provider: Record
         const delta = json.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
         if (delta) {
           text += delta;
+          opts.onDelta?.(delta);
           writeEvent(res, { type: 'delta', text: delta });
         }
       } catch {
@@ -232,7 +238,11 @@ export async function streamAssistant(res: Response, opts: StreamOptions) {
   const chapter = opts.chapterId ? project.chapters.find((c) => c.id === opts.chapterId) : null;
   const providerId = opts.providerId || settings.defaultModel?.providerId || 'mock';
   const modelId = opts.modelId || settings.defaultModel?.modelId || 'mock-writer';
-  const streamOpts: StreamOptions = { ...opts, providerId, modelId };
+  let partial = '';
+  const streamOpts: StreamOptions = {
+    ...opts, providerId, modelId,
+    onDelta: (delta) => { partial += delta; },
+  };
   const row = getProviderRow(providerId);
   if (!row) throw new Error('供应商不存在');
   const key = decryptSecret(row.api_key_enc);
@@ -261,7 +271,7 @@ export async function streamAssistant(res: Response, opts: StreamOptions) {
     buildWritingContext(streamOpts.projectId, streamOpts.chapterId || null),
   ].join('\n');
 
-  let result: { provider: string; model: string; text: string };
+  let result: { provider: string; model: string; text: string; aborted?: boolean };
   try {
     if (useMock) {
       result = await streamMock(res, streamOpts, project);
@@ -272,25 +282,50 @@ export async function streamAssistant(res: Response, opts: StreamOptions) {
     } else {
       result = await streamOpenAI(res, streamOpts, row, key, system);
     }
+    const aborted = Boolean(result.aborted || (streamOpts.signal.aborted && !res.writableEnded));
+    const finalText = result.text || partial;
+    if (streamOpts.replaceMessageId) {
+      deleteMessage(streamOpts.projectId, streamOpts.replaceMessageId);
+    }
     const message = saveMessage({
       projectId: streamOpts.projectId,
       chapterId: streamOpts.chapterId,
       role: 'assistant',
-      content: result.text,
+      content: finalText,
       providerId: effectiveProviderId,
       modelId: effectiveModelId,
+      status: aborted ? 'aborted' : 'complete',
     });
-    writeEvent(res, {
-      type: 'done',
-      messageId: message.id,
-      provider: result.provider,
-      model: result.model,
-      words: countWords(result.text),
-    });
+    if (!aborted && !res.writableEnded) {
+      writeEvent(res, {
+        type: 'done',
+        messageId: message.id,
+        provider: result.provider,
+        model: result.model,
+        words: countWords(finalText),
+      });
+    }
   } catch (error) {
-    if (streamOpts.signal.aborted) return;
-    writeEvent(res, { type: 'error', message: error instanceof Error ? error.message : 'AI 请求失败' });
+    if (streamOpts.signal.aborted) {
+      // 客户端点“停止”会先 abort fetch；已生成的内容仍要落库，不能整段丢掉。
+      if (partial.trim()) {
+        if (streamOpts.replaceMessageId) deleteMessage(streamOpts.projectId, streamOpts.replaceMessageId);
+        saveMessage({
+          projectId: streamOpts.projectId,
+          chapterId: streamOpts.chapterId,
+          role: 'assistant',
+          content: partial,
+          providerId: effectiveProviderId,
+          modelId: effectiveModelId,
+          status: 'aborted',
+        });
+      }
+      return;
+    }
+    if (!res.writableEnded) {
+      writeEvent(res, { type: 'error', message: error instanceof Error ? error.message : 'AI 请求失败' });
+    }
   } finally {
-    res.end();
+    if (!res.writableEnded) res.end();
   }
 }
