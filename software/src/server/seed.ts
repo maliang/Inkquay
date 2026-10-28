@@ -17,22 +17,22 @@ const providers = [
   },
   {
     id: 'deepseek', name: 'DeepSeek', family: '国内', kind: 'openai', mark: 'D', brand: '#4d6bfe', baseUrl: 'https://api.deepseek.com/v1',
-    models: [{ id: 'deepseek-chat', name: 'DeepSeek V3.2', ctx: '128k', tags: ['长文', '中文'] }, { id: 'deepseek-reasoner', name: 'DeepSeek R2', ctx: '128k', tags: ['推理'] }],
+    models: [{ id: 'deepseek-chat', name: 'DeepSeek Chat', ctx: '128k', tags: ['长文', '中文'] }, { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', ctx: '128k', tags: ['推理'] }],
     enabledModels: ['deepseek-chat'], enabled: 0, isDefault: 0,
   },
   {
     id: 'anthropic', name: 'Anthropic', family: '海外', kind: 'anthropic', mark: 'A', brand: '#d97757', baseUrl: 'https://api.anthropic.com/v1',
-    models: [{ id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', ctx: '200k', tags: ['长文', '文风'] }, { id: 'claude-opus-4-1', name: 'Claude Opus 4.1', ctx: '200k', tags: ['推理', '长文'] }],
+    models: [{ id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', ctx: '200k', tags: ['长文', '文风'], reasoning: ['low', 'medium', 'high'] }, { id: 'claude-opus-4-1', name: 'Claude Opus 4.1', ctx: '200k', tags: ['推理', '长文'], reasoning: ['low', 'medium', 'high'] }],
     enabledModels: ['claude-sonnet-4-5'], enabled: 0, isDefault: 0,
   },
   {
     id: 'openai', name: 'OpenAI', family: '海外', kind: 'openai', mark: 'O', brand: '#10a37f', baseUrl: 'https://api.openai.com/v1',
-    models: [{ id: 'gpt-5.2', name: 'GPT-5.2', ctx: '128k', tags: ['通用', '结构'] }, { id: 'o4', name: 'o4', ctx: '200k', tags: ['推理'] }],
+    models: [{ id: 'gpt-5.2', name: 'GPT-5.2', ctx: '128k', tags: ['通用', '结构'], reasoning: ['low', 'medium', 'high'] }, { id: 'o4', name: 'o4', ctx: '200k', tags: ['推理'], reasoning: ['low', 'medium', 'high'] }],
     enabledModels: ['gpt-5.2'], enabled: 0, isDefault: 0,
   },
   {
     id: 'google', name: 'Google Gemini', family: '海外', kind: 'google', mark: 'G', brand: '#4285f4', baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-    models: [{ id: 'gemini-3-5-pro', name: 'Gemini 3.5 Pro', ctx: '1M', tags: ['超长文'] }],
+    models: [{ id: 'gemini-3-5-pro', name: 'Gemini 3.5 Pro', ctx: '1M', tags: ['超长文'], reasoning: ['low', 'medium', 'high'] }],
     enabledModels: ['gemini-3-5-pro'], enabled: 0, isDefault: 0,
   },
   {
@@ -49,6 +49,54 @@ const providers = [
     id: 'moonshot', name: 'Moonshot', family: '国内', kind: 'openai', mark: 'K', brand: '#8c9199', baseUrl: 'https://api.moonshot.cn/v1',
     models: [{ id: 'kimi-k3', name: 'Kimi K3', ctx: '256k', tags: ['长文', '中文'] }],
     enabledModels: ['kimi-k3'], enabled: 0, isDefault: 0,
+  },
+  {
+    id: 'openrouter', name: 'OpenRouter', family: '聚合', kind: 'openai', mark: 'R', brand: '#6467f2', baseUrl: 'https://openrouter.ai/api/v1',
+    models: [
+      { id: 'openai/gpt-5.2', name: 'GPT-5.2 · OpenRouter', ctx: '128k', tags: ['聚合', '通用'], reasoning: ['low', 'medium', 'high'] },
+      { id: 'anthropic/claude-sonnet-4.5', name: 'Claude Sonnet 4.5 · OpenRouter', ctx: '200k', tags: ['聚合', '文风'], reasoning: ['low', 'medium', 'high'] },
+    ],
+    enabledModels: ['openai/gpt-5.2'], enabled: 0, isDefault: 0,
+  },
+  {
+    id: 'groq', name: 'Groq', family: '海外', kind: 'openai', mark: 'G', brand: '#f55036', baseUrl: 'https://api.groq.com/openai/v1',
+    models: [
+      { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B · Groq', ctx: '131k', tags: ['高速', '推理'], reasoning: ['low', 'medium', 'high'] },
+      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', ctx: '128k', tags: ['通用'] },
+    ],
+    enabledModels: ['openai/gpt-oss-120b'], enabled: 0, isDefault: 0,
+  },
+  {
+    id: 'mistral', name: 'Mistral', family: '海外', kind: 'openai', mark: 'M', brand: '#fa520f', baseUrl: 'https://api.mistral.ai/v1',
+    models: [
+      { id: 'mistral-large-latest', name: 'Mistral Large', ctx: '128k', tags: ['通用', '多语'] },
+      { id: 'codestral-latest', name: 'Codestral', ctx: '256k', tags: ['代码'] },
+    ],
+    enabledModels: ['mistral-large-latest'], enabled: 0, isDefault: 0,
+  },
+  {
+    id: 'xai', name: 'xAI Grok', family: '海外', kind: 'openai', mark: 'X', brand: '#1a1a1a', baseUrl: 'https://api.x.ai/v1',
+    models: [
+      { id: 'grok-4.2', name: 'Grok 4.2', ctx: '256k', tags: ['推理', '长文'], reasoning: ['low', 'medium', 'high'] },
+      { id: 'grok-4-fast', name: 'Grok 4 Fast', ctx: '2M', tags: ['高速', '长文'] },
+    ],
+    enabledModels: ['grok-4.2'], enabled: 0, isDefault: 0,
+  },
+  {
+    id: 'siliconflow', name: '硅基流动', family: '国内', kind: 'openai', mark: 'S', brand: '#5b5bd6', baseUrl: 'https://api.siliconflow.cn/v1',
+    models: [
+      { id: 'deepseek-ai/DeepSeek-V3.2', name: 'DeepSeek V3.2 · 硅基流动', ctx: '128k', tags: ['中文', '开源'] },
+      { id: 'Qwen/Qwen3.5-235B-A22B', name: 'Qwen3.5 235B', ctx: '128k', tags: ['中文', '开源'] },
+    ],
+    enabledModels: ['deepseek-ai/DeepSeek-V3.2'], enabled: 0, isDefault: 0,
+  },
+  {
+    id: 'together', name: 'Together AI', family: '聚合', kind: 'openai', mark: 'T', brand: '#0f6fff', baseUrl: 'https://api.together.xyz/v1',
+    models: [
+      { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B · Together', ctx: '131k', tags: ['聚合', '推理'], reasoning: ['low', 'medium', 'high'] },
+      { id: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8', name: 'Llama 4 Maverick', ctx: '1M', tags: ['聚合', '长文'] },
+    ],
+    enabledModels: ['openai/gpt-oss-120b'], enabled: 0, isDefault: 0,
   },
   {
     id: 'ollama', name: 'Ollama', family: '本地', kind: 'openai', mark: 'L', brand: '#6f8a80', baseUrl: 'http://localhost:11434/v1',
@@ -77,6 +125,7 @@ export function seedDatabase(db: DatabaseSync) {
     generation: { temperature: 0.8, streaming: true },
     defaultModel: null,
     fallbackModel: null,
+    reasoningLevel: 'default',
   };
   db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('app', ?)").run(JSON.stringify(appSettings));
 }

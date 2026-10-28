@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -43,9 +44,10 @@ async function main() {
   await waitForServer();
   const boot = await json('/api/bootstrap');
   assert.equal(boot.projects.length, 0, 'fresh install has no demo projects');
-  assert.equal(boot.providers.length, 9, 'seed has 9 providers');
+  assert.equal(boot.providers.length, 15, 'seed has 15 providers');
   assert.equal(boot.settings.onboarding.completed, false);
   assert.equal(boot.settings.profile.name, '');
+  assert.equal(boot.settings.reasoningLevel, 'default');
   console.log('PASS clean install bootstrap');
 
   const invalid = await fetch(`${base}/api/onboarding`, {
@@ -67,7 +69,26 @@ async function main() {
   assert.equal(onboarded.settings.defaultModel.providerId, 'deepseek');
   assert.equal(onboarded.provider.configured, true);
   assert.ok(onboarded.provider.apiKeyMasked.includes('3456'));
-  console.log('PASS mandatory onboarding + encrypted provider key');
+  const discovered = await json('/api/providers/mock/models', { method: 'POST', body: JSON.stringify({}) });
+  assert.ok(discovered.models.length > 0, 'mock provider exposes a model list');
+  const fakeProvider = await json('/api/providers', {
+    method: 'POST',
+    body: JSON.stringify({ name: '本地假接口', kind: 'openai', baseUrl: `http://127.0.0.1:${port + 1}/v1`, apiKey: 'test-key' }),
+  });
+  const fakeModelServer = createServer((req, res) => {
+    if (req.url?.endsWith('/models')) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ data: [{ id: 'fake-reasoner', display_name: 'Fake Reasoner', context_length: 128000 }] }));
+      return;
+    }
+    res.writeHead(404); res.end();
+  });
+  await new Promise((resolve) => fakeModelServer.listen(port + 1, '127.0.0.1', resolve));
+  const fakeModels = await json(`/api/providers/${fakeProvider.provider.id}/models`, { method: 'POST', body: JSON.stringify({ apiKey: 'test-key' }) });
+  assert.equal(fakeModels.models[0].id, 'fake-reasoner');
+  assert.equal(fakeModels.models[0].ctx, '128k');
+  await new Promise((resolve) => fakeModelServer.close(resolve));
+  console.log('PASS mandatory onboarding + encrypted provider key + model discovery');
 
   await json('/api/settings', {
     method: 'PUT',
@@ -317,6 +338,15 @@ async function main() {
   assert.ok(!noModelRaw.includes('"type":"delta"'), 'no silent mock delta');
   assert.ok(!noModelRaw.includes('"type":"done"'), 'no done event without a model');
 
+  await json('/api/settings', { method: 'PUT', body: JSON.stringify({ defaultModel: { providerId: 'mock', modelId: 'mock-writer' }, reasoningLevel: 'high' }) });
+  const normalizedSettings = await json('/api/settings');
+  assert.equal(normalizedSettings.settings.reasoningLevel, 'default', 'stale reasoning level falls back when the model does not support it');
+  const unsupportedReasoning = await (await aiStream({ prompt: '测试不支持推理等级。', reasoning: 'high' })).text();
+  assert.ok(unsupportedReasoning.includes('"type":"error"'), 'explicit unsupported reasoning is refused');
+  assert.ok(unsupportedReasoning.includes('推理等级'), 'error names reasoning level');
+  assert.ok(!unsupportedReasoning.includes('"type":"delta"'));
+  await json('/api/settings', { method: 'PUT', body: JSON.stringify({ reasoningLevel: 'default' }) });
+
   await json('/api/settings', { method: 'PUT', body: JSON.stringify({ defaultModel: { providerId: 'ghost', modelId: 'ghost-1' } }) });
   const ghostRaw = await (await aiStream({ prompt: '供应商不存在。' })).text();
   assert.ok(ghostRaw.includes('"type":"error"') && ghostRaw.includes('不存在'), 'unknown provider is refused explicitly');
@@ -470,7 +500,7 @@ async function main() {
   await waitForServer();
   const reboot = await json('/api/bootstrap');
   assert.equal(reboot.projects.length, 0, 'restart after deleting all projects stays empty');
-  assert.equal(reboot.providers.length, 9, 'restart does not duplicate providers');
+  assert.equal(reboot.providers.length, 16, 'restart does not duplicate providers (15 seed + fake test provider)');
   console.log('PASS restart after empty library');
 
   console.log('\nAll API tests passed.');

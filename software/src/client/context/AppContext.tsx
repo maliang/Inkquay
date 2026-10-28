@@ -25,6 +25,7 @@ const fallbackSettings: AppSettings = {
   generation: { temperature: 0.8, streaming: true },
   defaultModel: null,
   fallbackModel: null,
+  reasoningLevel: 'default',
 };
 
 const AppContext = createContext<AppContextValue | null>(null);

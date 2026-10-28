@@ -8,7 +8,9 @@ import type {
   ProjectBundle,
   ProjectDetail,
   ProjectSummary,
+  ProviderDiscoveryResult,
   ProviderInfo,
+  ReasoningPreference,
 } from '../shared/types.ts';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -65,6 +67,7 @@ export const api = {
   },
   completeOnboarding: (input: {
     name: string; signature?: string; providerId: string; apiKey: string; baseUrl?: string; modelId: string;
+    models?: ModelInfo[]; reasoningLevel?: ReasoningPreference;
   }) => request<{ settings: AppSettings; provider: ProviderInfo }>('/api/onboarding', { method: 'POST', body: JSON.stringify(input) }),
   updateSettings: (patch: Partial<AppSettings>) =>
     request<{ settings: AppSettings }>('/api/settings', { method: 'PUT', body: JSON.stringify(patch) }),
@@ -75,6 +78,8 @@ export const api = {
   createProvider: (input: { name: string; kind?: string; baseUrl?: string; apiKey?: string; models?: ModelInfo[]; enabledModels?: string[] }) =>
     request<{ provider: ProviderInfo }>('/api/providers', { method: 'POST', body: JSON.stringify(input) }),
   testProvider: (id: string) => request<{ ok: boolean; message: string; models?: string[] }>(`/api/providers/${id}/test`, { method: 'POST' }),
+  discoverProviderModels: (id: string, input: { apiKey?: string; baseUrl?: string }) =>
+    request<ProviderDiscoveryResult>(`/api/providers/${id}/models`, { method: 'POST', body: JSON.stringify(input) }),
   planProject: (id: string, signal?: AbortSignal) =>
     request<{ plan: import('../shared/types').ProjectPlan }>(`/api/projects/${id}/plan`, { method: 'POST', signal }),
   applyPlan: (id: string, plan: import('../shared/types').ProjectPlan) =>

@@ -7768,6 +7768,9 @@ html[data-theme="paper"] .focus-exit {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 .provider-model-item {
   display: flex;

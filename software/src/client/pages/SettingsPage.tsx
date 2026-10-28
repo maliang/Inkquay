@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { AccentId, AppearanceSettings, ProviderInfo, ThemeId } from '../../shared/types';
+import type { AccentId, AppearanceSettings, ModelInfo, ProviderInfo, ReasoningPreference, ThemeId } from '../../shared/types';
 import { api } from '../api';
 import { useApp } from '../context/AppContext';
 import { ACCENT_PRESETS, THEME_META, applyAppearance } from '../theme';
@@ -44,6 +44,7 @@ export function SettingsPage() {
   const [providerKey, setProviderKey] = useState('');
   const [providerBase, setProviderBase] = useState('');
   const [providerModels, setProviderModels] = useState<string[]>([]);
+  const [providerCatalog, setProviderCatalog] = useState<ModelInfo[]>([]);
   const [providerDefaultChoice, setProviderDefaultChoice] = useState('');
   const [testState, setTestState] = useState<{ kind: 'idle' | 'loading' | 'ok' | 'error'; message: string }>({ kind: 'idle', message: '未测试' });
   const saveTimer = useRef<number | null>(null);
@@ -70,6 +71,8 @@ export function SettingsPage() {
     }).filter(Boolean) as { provider: ProviderInfo; model: ProviderInfo['models'][number] }[];
   }), [providers]);
   const defaultEntry = modelEntries.find((e) => e.provider.id === settings.defaultModel?.providerId && e.model.id === settings.defaultModel?.modelId);
+  const reasoningOptions: ReasoningPreference[] = ['default', ...(defaultEntry?.model.reasoning || [])];
+  const reasoningValue = reasoningOptions.includes(settings.reasoningLevel) ? settings.reasoningLevel : 'default';
 
   function changeAppearance(next: AppearanceSettings, immediate = false) {
     setAppearance(next);
@@ -95,7 +98,10 @@ export function SettingsPage() {
     const entry = modelEntries.find((e) => `${e.provider.id}::${e.model.id}` === value);
     if (!entry) return;
     try {
-      await updateSettings({ defaultModel: { providerId: entry.provider.id, modelId: entry.model.id } });
+      const nextReasoning = entry.model.reasoning?.includes(settings.reasoningLevel as 'low' | 'medium' | 'high')
+        ? settings.reasoningLevel
+        : 'default';
+      await updateSettings({ defaultModel: { providerId: entry.provider.id, modelId: entry.model.id }, reasoningLevel: nextReasoning });
       toast(`默认模型：${entry.model.name}`);
     } catch (err) {
       toast(err instanceof Error ? err.message : '切换模型失败', 'warn');
@@ -129,6 +135,7 @@ export function SettingsPage() {
     setProviderKey('');
     setProviderBase(provider.baseUrl);
     setProviderModels([...provider.enabledModels]);
+    setProviderCatalog([...provider.models]);
     setProviderDefaultChoice(settings.defaultModel?.providerId === provider.id ? settings.defaultModel.modelId : '');
     setTestState({ kind: 'idle', message: '未测试' });
   }
@@ -144,6 +151,7 @@ export function SettingsPage() {
       const result = await api.updateProvider(editing.id, {
         enabled: willConfigure ? providerEnabled : false,
         enabledModels: providerModels,
+        models: providerCatalog,
         baseUrl: providerBase,
         ...(providerKey.trim() ? { apiKey: providerKey.trim() } : {}),
       });
@@ -171,13 +179,20 @@ export function SettingsPage() {
 
   async function testProvider() {
     if (!editing) return;
-    setTestState({ kind: 'loading', message: '检查中…' });
+    setTestState({ kind: 'loading', message: '检查并拉取模型中…' });
     try {
-      if (editing.kind !== 'mock' && providerKey.trim()) {
-        await api.updateProvider(editing.id, { apiKey: providerKey.trim(), baseUrl: providerBase });
-      }
-      const result = await api.testProvider(editing.id);
-      setTestState({ kind: result.ok ? 'ok' : 'error', message: result.message });
+      // 用编辑中的 Key/Base URL 试探，不先落库：用户点“取消”时不应偷偷保存配置。
+      const result = await api.discoverProviderModels(editing.id, {
+        apiKey: providerKey.trim() || undefined,
+        baseUrl: providerBase.trim(),
+      });
+      setProviderCatalog(result.models);
+      const ids = new Set(result.models.map((model) => model.id));
+      const kept = providerModels.filter((id) => ids.has(id));
+      const nextEnabled = kept.length ? kept : (result.models[0] ? [result.models[0].id] : []);
+      setProviderModels(nextEnabled);
+      if (providerDefaultChoice && !ids.has(providerDefaultChoice)) setProviderDefaultChoice(nextEnabled[0] || '');
+      setTestState({ kind: 'ok', message: result.message });
     } catch (err) {
       setTestState({ kind: 'error', message: err instanceof Error ? err.message : '连接失败' });
     }
@@ -193,6 +208,7 @@ export function SettingsPage() {
       setProviderKey('');
       setProviderBase(provider.baseUrl);
       setProviderModels([]);
+      setProviderCatalog(provider.models);
       setProviderDefaultChoice('');
     } catch (err) {
       toast(err instanceof Error ? err.message : '创建供应商失败', 'warn');
@@ -200,7 +216,7 @@ export function SettingsPage() {
   }
 
   function exportSettings() {
-    const payload = { appearance: settings.appearance, prefs: settings.prefs, generation: settings.generation, defaultModel: settings.defaultModel, providers: providers.map((p) => ({ ...p, apiKeyMasked: '' })) };
+    const payload = { appearance: settings.appearance, prefs: settings.prefs, generation: settings.generation, defaultModel: settings.defaultModel, reasoningLevel: settings.reasoningLevel, providers: providers.map((p) => ({ ...p, apiKeyMasked: '' })) };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -239,7 +255,7 @@ export function SettingsPage() {
                   </div>
                   <div className="profile-editor__foot"><span className="field-hint">头像暂时使用称呼首字；导出 Word 时会作为作者署名。</span><button className="btn btn--primary btn--sm" type="button" onClick={saveProfile}><Icon name="check" /> 保存资料</button></div>
                 </div>
-                <div className="settings-block"><div className="settings-block__head"><div><h3>关于称呼</h3><p>这个值最初来自演示数据，不是系统账号。</p></div></div><p className="settings-footnote" style={{ margin: 0 }}><Icon name="eye" /> 私家写手是单机本地应用，没有登录系统；称呼只保存在本地 SQLite 的 settings 表里。</p></div>
+                <div className="settings-block"><div className="settings-block__head"><div><h3>关于称呼</h3><p>这个值只在首次打开时填写，不是系统账号。</p></div></div><p className="settings-footnote" style={{ margin: 0 }}><Icon name="eye" /> 私家写手是单机本地应用，没有登录系统；称呼只保存在本地 SQLite 的 settings 表里。</p></div>
               </>
             )}
             {tab === 'appearance' && (
@@ -301,6 +317,7 @@ export function SettingsPage() {
                 <div className="settings-block"><div className="settings-block__head"><div><h3>生成参数</h3><p>作用于写作台的默认生成行为。</p></div></div><div className="generation-grid">
                   <div className="setting-row setting-row--range"><div><strong>创造性</strong><span>越低越克制，越高越发散</span></div><div className="range-wrap"><input type="range" min="0" max="1.5" step="0.1" value={settings.generation.temperature} onChange={(e) => { void updateSettings({ generation: { ...settings.generation, temperature: Number(e.target.value) } }); }} /><b>{settings.generation.temperature.toFixed(1)}</b></div></div>
                   <div className="setting-row"><div><strong>默认模型</strong><span>切换后写作台同步更新</span></div><select className="text-input text-input--compact" value={settings.defaultModel ? `${settings.defaultModel.providerId}::${settings.defaultModel.modelId}` : ''} onChange={(e) => void changeDefaultModel(e.target.value)}>{modelEntries.map((entry) => <option key={`${entry.provider.id}::${entry.model.id}`} value={`${entry.provider.id}::${entry.model.id}`}>{entry.provider.name} · {entry.model.name}</option>)}</select></div>
+                  <div className="setting-row"><div><strong>推理等级</strong><span>{defaultEntry?.model.reasoning?.length ? '请求时传给供应商的真实参数' : '当前模型不支持调节，保持默认'}</span></div><select className="text-input text-input--compact" value={reasoningValue} disabled={reasoningOptions.length <= 1} onChange={(e) => void updateSettings({ reasoningLevel: e.target.value as ReasoningPreference })}>{reasoningOptions.map((level) => <option key={level} value={level}>{level === 'default' ? '默认' : level === 'low' ? '低 · 更快' : level === 'medium' ? '中 · 平衡' : '高 · 更深'}</option>)}</select></div>
                 </div></div>
                 <div className="provider-note"><div className="provider-note__icon"><Icon name="shield" /></div><div><strong>实际请求由服务端转发</strong><p>供应商配置保存在本地 SQLite，密钥加密存储；OpenAI 兼容接口、Anthropic 和 Gemini 分别走各自的流式协议。没有配置 Key 时会明确报错，不会静默回退到演示模型。</p></div></div>
               </>
@@ -335,13 +352,13 @@ export function SettingsPage() {
             <div className="provider-dialog__body">
               <div className="provider-switch-row"><div><strong>在此工作台启用</strong><span>关闭后不会出现在模型列表中</span></div><button className={`switch${providerEnabled ? ' is-on' : ''}`} type="button" onClick={() => setProviderEnabled((v) => !v)}><i /></button></div>
               {editing.kind !== 'mock' && <><div className="form-block"><label className="form-label">API Key <span>留空则保持原密钥</span></label><div className="secret-input"><Icon name="key" /><input type="password" value={providerKey} onChange={(e) => setProviderKey(e.target.value)} placeholder={editing.apiKeyMasked || 'sk-…'} /></div><p className="field-hint">密钥只在服务端解密用于请求，不会返回浏览器。</p></div><div className="form-block"><label className="form-label">Base URL <span>OpenAI 兼容接口地址</span></label><input className="text-input" value={providerBase} onChange={(e) => setProviderBase(e.target.value)} /></div></>}
-              <div className="connection-row"><button className="btn btn--ghost" type="button" onClick={testProvider} disabled={testState.kind === 'loading'}><Icon name="plug" /> {testState.kind === 'loading' ? '检查中…' : '检查连接'}</button><span className={`connection-status${testState.kind === 'ok' ? ' is-ok' : testState.kind === 'error' ? ' is-error' : ''}`}><i />{testState.message}</span></div>
-              <div className="provider-models-head"><div><h4>可用模型</h4><p>勾选后可在写作台切换。</p></div></div>
-              <div className="provider-model-list">{editing.models.map((model) => { const enabled = providerModels.includes(model.id); return <label className={`provider-model-item${enabled ? ' is-enabled' : ''}`} key={model.id}><input type="checkbox" checked={enabled} onChange={() => setProviderModels((prev) => enabled ? prev.filter((id) => id !== model.id) : [...prev, model.id])} /><span className="provider-model-item__body"><strong>{model.name}</strong><span>{model.ctx} 上下文</span></span><span className="provider-model-item__tags">{model.tags.map((tag) => <span key={tag}>{tag}</span>)}</span></label>; })}</div>
+              <div className="connection-row"><button className="btn btn--ghost" type="button" onClick={testProvider} disabled={testState.kind === 'loading'}><Icon name="plug" /> {testState.kind === 'loading' ? '拉取中…' : '检查并拉取模型'}</button><span className={`connection-status${testState.kind === 'ok' ? ' is-ok' : testState.kind === 'error' ? ' is-error' : ''}`}><i />{testState.message}</span></div>
+              <div className="provider-models-head"><div><h4>可用模型</h4><p>勾选后可在写作台切换；模型列表以接口返回为准。</p></div></div>
+              <div className="provider-model-list">{providerCatalog.map((model) => { const enabled = providerModels.includes(model.id); return <label className={`provider-model-item${enabled ? ' is-enabled' : ''}`} key={model.id}><input type="checkbox" checked={enabled} onChange={() => setProviderModels((prev) => enabled ? prev.filter((id) => id !== model.id) : [...prev, model.id])} /><span className="provider-model-item__body"><strong>{model.name}</strong><span>{model.ctx} 上下文{model.reasoning?.length ? ` · 推理 ${model.reasoning.join(' / ')}` : ''}</span></span><span className="provider-model-item__tags">{model.tags.map((tag) => <span key={tag}>{tag}</span>)}</span></label>; })}</div>
               <div className="provider-models-head provider-models-head--default"><div><h4>默认模型</h4><p>可以稍后在写作台顶部切换。</p></div></div>
               <select className="text-input provider-default-select" value={providerModels.includes(providerDefaultChoice) ? providerDefaultChoice : ''} onChange={(e) => setProviderDefaultChoice(e.target.value)} disabled={!providerEnabled}>
                 <option value="">不设为默认</option>
-                {providerModels.map((id) => { const model = editing.models.find((m) => m.id === id); return <option key={id} value={id}>{model?.name || id}</option>; })}
+                {providerModels.map((id) => { const model = providerCatalog.find((m) => m.id === id); return <option key={id} value={id}>{model?.name || id}</option>; })}
               </select>
             </div>
             <footer className="provider-dialog__foot"><span className="modal__hint">保存后立即生效。</span><div className="modal__foot-actions"><button className="btn btn--ghost" type="button" onClick={() => setEditing(null)}>取消</button><button className="btn btn--primary" type="button" onClick={saveProvider}><Icon name="check" /> 保存配置</button></div></footer>

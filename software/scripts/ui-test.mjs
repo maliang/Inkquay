@@ -53,6 +53,8 @@ try {
   await page.locator('.onboarding-form input').nth(1).fill('E2E签名');
   await page.locator('.onboarding-card__foot .btn--primary').click();
   await page.locator('.onboarding-provider', { hasText: 'DeepSeek' }).click();
+  assert.equal(await page.locator('.onboarding-discover .btn').count(), 1, 'onboarding exposes model discovery');
+  assert.equal(await page.locator('.onboarding-form select').count(), 2, 'onboarding exposes model + reasoning selects');
   await page.locator('.onboarding-form input[type="password"]').fill('sk-e2e-test-123456');
   await page.locator('.onboarding-card__foot .btn--primary').click();
   await page.waitForSelector('.first-run', { timeout: 15000 });
@@ -381,7 +383,7 @@ try {
     }, model);
   };
   const openProviderDialog = async (name) => {
-    await page.locator('.provider-card', { hasText: name }).click();
+    await page.locator('.provider-card').filter({ has: page.locator('h4', { hasText: name }) }).click();
     await page.waitForSelector('.provider-dialog');
   };
   const saveProviderDialog = async () => {
@@ -394,7 +396,7 @@ try {
   const baselineModel = await readDefaultModel();
   assert.equal(baselineModel?.providerId, 'mock', `基线默认模型应是 mock：${JSON.stringify(baselineModel)}`);
   await openProviderDialog('DeepSeek');
-  await page.locator('.provider-model-item', { hasText: 'DeepSeek R2' }).locator('input').check();
+  await page.locator('.provider-model-item', { hasText: 'DeepSeek Reasoner' }).locator('input').check();
   await saveProviderDialog();
   assert.deepEqual(await readDefaultModel(), baselineModel, '保存非默认供应商不得改默认模型');
   await writeDefaultModel({ providerId: 'deepseek', modelId: 'deepseek-reasoner' });
@@ -406,7 +408,7 @@ try {
   await saveProviderDialog();
   assert.equal((await readDefaultModel())?.modelId, 'deepseek-reasoner', '原样保存不得把默认模型打回第一个');
   await openProviderDialog('DeepSeek');
-  await page.locator('.provider-model-item', { hasText: 'DeepSeek R2' }).locator('input').uncheck();
+  await page.locator('.provider-model-item', { hasText: 'DeepSeek Reasoner' }).locator('input').uncheck();
   await saveProviderDialog();
   const afterUncheck = await readDefaultModel();
   assert.equal(afterUncheck?.modelId, 'deepseek-chat', `取消勾选当前默认模型后应落到仍启用的模型：${JSON.stringify(afterUncheck)}`);

@@ -1,4 +1,4 @@
-import type { ProjectDetail, ProjectPlan, PlannedAct, PlannedCharacter } from '../shared/types.ts';
+import type { ProjectDetail, ProjectPlan, PlannedAct, PlannedCharacter, ReasoningPreference } from '../shared/types.ts';
 import { decryptSecret } from './crypto.ts';
 import { getProviderRow, getSettings } from './repository.ts';
 import { AI_NO_DEFAULT_MODEL } from './utils.ts';
@@ -84,14 +84,19 @@ function mockPlan(project: ProjectDetail): ProjectPlan {
   };
 }
 
-async function callOpenAI(provider: any, key: string, model: string, system: string, prompt: string): Promise<string> {
+async function callOpenAI(provider: any, key: string, model: string, system: string, prompt: string, reasoning: ReasoningPreference): Promise<string> {
+  const body: Record<string, any> = {
+    model, stream: false, temperature: 0.7,
+    messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }],
+  };
+  if (reasoning !== 'default') {
+    if (/openrouter/i.test(String(provider.base_url || ''))) body.reasoning = { effort: reasoning };
+    else body.reasoning_effort = reasoning;
+  }
   const response = await fetch(endpoint(provider.base_url, '/chat/completions'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model, stream: false, temperature: 0.7,
-      messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }],
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(90000),
   });
   const data: any = await response.json().catch(() => ({}));
@@ -99,11 +104,14 @@ async function callOpenAI(provider: any, key: string, model: string, system: str
   return data.choices?.[0]?.message?.content || '';
 }
 
-async function callAnthropic(provider: any, key: string, model: string, system: string, prompt: string): Promise<string> {
+async function callAnthropic(provider: any, key: string, model: string, system: string, prompt: string, reasoning: ReasoningPreference): Promise<string> {
+  const budget = reasoning === 'low' ? 1024 : reasoning === 'medium' ? 2048 : reasoning === 'high' ? 4096 : 0;
+  const body: Record<string, any> = { model, max_tokens: budget ? Math.max(8192, budget + 2048) : 4096, system, messages: [{ role: 'user', content: prompt }] };
+  if (budget) body.thinking = { type: 'enabled', budget_tokens: budget };
   const response = await fetch(endpoint(provider.base_url, '/messages'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model, max_tokens: 4096, system, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(90000),
   });
   const data: any = await response.json().catch(() => ({}));
@@ -111,12 +119,15 @@ async function callAnthropic(provider: any, key: string, model: string, system: 
   return (data.content || []).map((part: any) => part?.text || '').join('');
 }
 
-async function callGoogle(provider: any, key: string, model: string, system: string, prompt: string): Promise<string> {
+async function callGoogle(provider: any, key: string, model: string, system: string, prompt: string, reasoning: ReasoningPreference): Promise<string> {
   const url = `${provider.base_url.replace(/\/+$/, '')}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+  const generationConfig = reasoning !== 'default'
+    ? { thinkingConfig: { thinkingBudget: reasoning === 'low' ? 1024 : reasoning === 'medium' ? 4096 : 12288 } }
+    : undefined;
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: prompt }] }] }),
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: prompt }] }], ...(generationConfig ? { generationConfig } : {}) }),
     signal: AbortSignal.timeout(90000),
   });
   const data: any = await response.json().catch(() => ({}));
@@ -133,6 +144,12 @@ export async function generateProjectPlan(project: ProjectDetail): Promise<Proje
   if (provider.kind === 'mock') return mockPlan(project);
   const key = decryptSecret(provider.api_key_enc);
   if (!key) throw new Error('供应商未配置 API Key');
+  const models = JSON.parse(String(provider.models || '[]')) as Array<{ id: string; reasoning?: string[] }>;
+  const selectedModel = models.find((model) => model.id === modelRef.modelId);
+  const reasoning = settings.reasoningLevel || 'default';
+  if (reasoning !== 'default' && !selectedModel?.reasoning?.includes(reasoning)) {
+    throw new Error(`模型 ${modelRef.modelId} 不支持「${reasoning}」推理等级，请到设置中重置`);
+  }
   const system = '你是一位资深中文小说策划编辑。你只输出严格 JSON，不写解释，不使用 Markdown。';
   const prompt = `请为下面这部作品做一份可直接落地的三幕企划，并写第一章开头。
 
@@ -160,9 +177,9 @@ export async function generateProjectPlan(project: ProjectDetail): Promise<Proje
 - 第一章正文要具体、有场景、有动作，不要解释设定。
 - 只输出 JSON。`;
   const text = provider.kind === 'anthropic'
-    ? await callAnthropic(provider, key, modelRef.modelId, system, prompt)
+    ? await callAnthropic(provider, key, modelRef.modelId, system, prompt, reasoning)
     : provider.kind === 'google'
-      ? await callGoogle(provider, key, modelRef.modelId, system, prompt)
-      : await callOpenAI(provider, key, modelRef.modelId, system, prompt);
+      ? await callGoogle(provider, key, modelRef.modelId, system, prompt, reasoning)
+      : await callOpenAI(provider, key, modelRef.modelId, system, prompt, reasoning);
   return normalizePlan(extractJson(text), project);
 }

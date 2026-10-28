@@ -78,7 +78,7 @@ async function streamMock(res: Response, opts: StreamOptions, project: ProjectDe
 
 async function streamOpenAI(res: Response, opts: StreamOptions, provider: Record<string, any>, key: string, system: string) {
   const url = providerEndpoint(provider.base_url, '/chat/completions');
-  const body = {
+  const body: Record<string, any> = {
     model: opts.modelId,
     stream: true,
     temperature: getSettings().generation.temperature,
@@ -87,6 +87,11 @@ async function streamOpenAI(res: Response, opts: StreamOptions, provider: Record
       { role: 'user', content: opts.prompt },
     ],
   };
+  if (opts.reasoning && opts.reasoning !== 'default') {
+    // OpenRouter 用 reasoning.effort；其余 OpenAI 兼容端用 reasoning_effort。
+    if (/openrouter/i.test(String(provider.base_url || ''))) body.reasoning = { effort: opts.reasoning };
+    else body.reasoning_effort = opts.reasoning;
+  }
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
@@ -131,6 +136,15 @@ async function streamOpenAI(res: Response, opts: StreamOptions, provider: Record
 
 async function streamAnthropic(res: Response, opts: StreamOptions, provider: Record<string, any>, key: string, system: string) {
   const url = providerEndpoint(provider.base_url, '/messages');
+  const thinkingBudget = opts.reasoning === 'low' ? 1024 : opts.reasoning === 'medium' ? 2048 : opts.reasoning === 'high' ? 4096 : 0;
+  const body: Record<string, any> = {
+    model: opts.modelId,
+    max_tokens: thinkingBudget ? Math.max(4096, thinkingBudget + 1024) : 2048,
+    stream: true,
+    system,
+    messages: [{ role: 'user', content: opts.prompt }],
+  };
+  if (thinkingBudget) body.thinking = { type: 'enabled', budget_tokens: thinkingBudget };
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -138,13 +152,7 @@ async function streamAnthropic(res: Response, opts: StreamOptions, provider: Rec
       'x-api-key': key,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({
-      model: opts.modelId,
-      max_tokens: 2048,
-      stream: true,
-      system,
-      messages: [{ role: 'user', content: opts.prompt }],
-    }),
+    body: JSON.stringify(body),
     signal: opts.signal,
   });
   if (!response.ok || !response.body) {
@@ -192,7 +200,12 @@ async function streamGoogle(res: Response, opts: StreamOptions, provider: Record
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [{ text: opts.prompt }] }],
-      generationConfig: { temperature: getSettings().generation.temperature },
+      generationConfig: {
+        temperature: getSettings().generation.temperature,
+        ...(opts.reasoning && opts.reasoning !== 'default'
+          ? { thinkingConfig: { thinkingBudget: opts.reasoning === 'low' ? 1024 : opts.reasoning === 'medium' ? 4096 : 12288 } }
+          : {}),
+      },
     }),
     signal: opts.signal,
   });
@@ -254,9 +267,15 @@ export async function streamAssistant(res: Response, opts: StreamOptions) {
   if (allowedModels.length && !allowedModels.includes(modelId)) {
     throw new Error(`模型 ${modelId} 不在「${row.name}」的可用列表里，请到设置中重新选择`);
   }
+  const modelInfo = (JSON.parse(String(row.models || '[]')) as Array<{ id: string; reasoning?: string[] }>)
+    .find((model) => model.id === modelId);
+  const requestedReasoning = opts.reasoning || settings.reasoningLevel || 'default';
+  if (requestedReasoning !== 'default' && !modelInfo?.reasoning?.includes(requestedReasoning)) {
+    throw new Error(`模型 ${modelId} 不支持「${requestedReasoning}」推理等级，请到设置中重置`);
+  }
   let partial = '';
   const streamOpts: StreamOptions = {
-    ...opts, providerId, modelId,
+    ...opts, providerId, modelId, reasoning: requestedReasoning,
     onDelta: (delta) => { partial += delta; },
   };
   const key = decryptSecret(row.api_key_enc);

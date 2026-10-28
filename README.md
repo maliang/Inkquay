@@ -97,7 +97,8 @@ pnpm desktop:dmg     # 本机架构 .dmg
 - 章节版本：AI 企划 / 插入 / 改写 / 自动保存 / 切换章节自动快照，左右对比与回退；可按章或按全书查看历史
 - AI 流式共笔、重新生成、停止生成保留已生成部分、消息持久化、插入正文、模型切换
 - 选中文本 → 改写 / 扩写 / 精简 / 换语气 → 精确替换原选区，不误伤同文其他位置
-- 模型供应商：OpenAI 兼容 / Anthropic / Gemini / 本地 mock
+- 模型供应商：DeepSeek / OpenAI / Anthropic / Gemini / 通义 / 智谱 / Moonshot / Ollama / OpenRouter / Groq / Mistral / xAI / 硅基流动 / Together / 自定义 OpenAI 兼容接口
+- 动态模型目录：填写 Key 后可拉取账号真实模型列表，勾选启用；支持推理参数的模型可选低 / 中 / 高推理等级，不支持的不显示假开关
 - 供应商 Key 使用 AES-256-GCM 加密保存
 - 大纲场景编辑 / 新增 / 上移下移 / 拖拽排序 / 删除
 - 人物 CRUD、伏笔新增/编辑/删除

@@ -24,11 +24,16 @@ export interface GenerationSettings {
   streaming: boolean;
 }
 
+export type ReasoningLevel = 'low' | 'medium' | 'high';
+export type ReasoningPreference = 'default' | ReasoningLevel;
+
 export interface ModelInfo {
   id: string;
   name: string;
   ctx: string;
   tags: string[];
+  /** 该模型真实支持的推理强度；缺省表示不暴露调节项。 */
+  reasoning?: ReasoningLevel[];
 }
 
 export interface ProviderInfo {
@@ -70,6 +75,7 @@ export interface AppSettings {
   generation: GenerationSettings;
   defaultModel: ModelRef | null;
   fallbackModel: ModelRef | null;
+  reasoningLevel: ReasoningPreference;
 }
 
 export interface ProjectSummary {
@@ -227,6 +233,13 @@ export interface AiStreamRequest {
   mode?: 'continue' | 'rewrite' | 'outline' | 'check';
   regenerate?: boolean;
   replaceMessageId?: string;
+  reasoning?: ReasoningPreference;
+}
+
+export interface ProviderDiscoveryResult {
+  ok: boolean;
+  message: string;
+  models: ModelInfo[];
 }
 
 export interface ApiError {

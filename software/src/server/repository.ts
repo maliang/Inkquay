@@ -16,9 +16,11 @@ import type {
   ProjectSummary,
   ProviderInfo,
   ProjectPlan,
+  ReasoningPreference,
   Scene,
   Shot,
 } from '../shared/types.ts';
+import { fetchProviderModels } from './models.ts';
 
 type Row = Record<string, any>;
 
@@ -30,6 +32,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   generation: { temperature: 0.8, streaming: true },
   defaultModel: null,
   fallbackModel: null,
+  reasoningLevel: 'default',
 };
 
 function parseJson<T>(value: unknown, fallback: T): T {
@@ -279,7 +282,7 @@ export function updateProject(id: string, patch: { title?: string; genre?: strin
 export function getSettings(): AppSettings {
   const row = db.prepare("SELECT value FROM settings WHERE key = 'app'").get() as Row | undefined;
   const stored = parseJson<Partial<AppSettings>>(row?.value, {});
-  return {
+  const settings: AppSettings = {
     profile: { ...DEFAULT_SETTINGS.profile, ...(stored.profile || {}) },
     onboarding: { ...DEFAULT_SETTINGS.onboarding, ...(stored.onboarding || {}) },
     appearance: { ...DEFAULT_SETTINGS.appearance, ...(stored.appearance || {}) },
@@ -287,7 +290,16 @@ export function getSettings(): AppSettings {
     generation: { ...DEFAULT_SETTINGS.generation, ...(stored.generation || {}) },
     defaultModel: stored.defaultModel ?? DEFAULT_SETTINGS.defaultModel,
     fallbackModel: stored.fallbackModel ?? DEFAULT_SETTINGS.fallbackModel,
+    reasoningLevel: stored.reasoningLevel ?? DEFAULT_SETTINGS.reasoningLevel,
   };
+  // 默认模型变化后，旧推理等级可能已不支持；回读时回落，避免 UI 显示“默认”却实际发送旧档位。
+  if (settings.reasoningLevel !== 'default' && settings.defaultModel) {
+    const provider = getProviderRow(settings.defaultModel.providerId);
+    const models = parseJson<ModelInfo[]>(provider?.models, []);
+    const model = models.find((item) => item.id === settings.defaultModel?.modelId);
+    if (!model?.reasoning?.includes(settings.reasoningLevel)) settings.reasoningLevel = 'default';
+  }
+  return settings;
 }
 
 export function saveSettings(patch: Partial<AppSettings>): AppSettings {
@@ -299,6 +311,7 @@ export function saveSettings(patch: Partial<AppSettings>): AppSettings {
     generation: { ...getSettings().generation, ...(patch.generation || {}) },
     defaultModel: patch.defaultModel !== undefined ? patch.defaultModel : getSettings().defaultModel,
     fallbackModel: patch.fallbackModel !== undefined ? patch.fallbackModel : getSettings().fallbackModel,
+    reasoningLevel: patch.reasoningLevel !== undefined ? patch.reasoningLevel : getSettings().reasoningLevel,
   };
   db.prepare("INSERT INTO settings (key, value) VALUES ('app', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
     .run(JSON.stringify(next));
@@ -389,39 +402,17 @@ export function createProvider(input: { name: string; kind?: string; baseUrl?: s
 export async function testProviderConnection(id: string): Promise<{ ok: boolean; message: string; models?: string[] }> {
   const row = getProviderRow(id);
   if (!row) return { ok: false, message: '供应商不存在' };
-  if (row.kind === 'mock') return { ok: true, message: '本地演示模型无需连接' };
-  const key = decryptSecret(row.api_key_enc);
-  if (!key) return { ok: false, message: '请先填写 API Key' };
-  const base = String(row.base_url || '').replace(/\/+$/, '');
-  if (!base) return { ok: false, message: '请先填写 Base URL' };
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
   try {
-    let url = `${base}/models`;
-    const headers: Record<string, string> = {};
-    if (row.kind === 'anthropic') {
-      headers['x-api-key'] = key;
-      headers['anthropic-version'] = '2023-06-01';
-    } else if (row.kind === 'google') {
-      url = `${base}/models?key=${encodeURIComponent(key)}`;
-    } else {
-      headers.Authorization = `Bearer ${key}`;
-    }
-    const response = await fetch(url, { headers, signal: controller.signal });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return { ok: false, message: `连接失败：HTTP ${response.status} ${(data as any)?.error?.message || ''}`.trim() };
-    }
-    const models = Array.isArray((data as any)?.data)
-      ? (data as any).data.map((m: any) => m.id).filter(Boolean)
-      : Array.isArray((data as any)?.models)
-        ? (data as any).models.map((m: any) => m.name || m.id).filter(Boolean)
-        : [];
-    return { ok: true, message: models.length ? `连接成功，发现 ${models.length} 个模型` : '连接成功', models };
+    const result = await fetchProviderModels({
+      providerId: id,
+      kind: row.kind,
+      baseUrl: row.base_url,
+      apiKey: decryptSecret(row.api_key_enc),
+      existing: parseJson<ModelInfo[]>(row.models, []),
+    });
+    return { ok: true, message: result.message, models: result.models.map((model) => model.id) };
   } catch (error) {
     return { ok: false, message: `连接失败：${error instanceof Error ? error.message : '网络错误'}` };
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -880,14 +871,20 @@ export function importProjectBundle(bundle: ProjectBundle): ProjectDetail {
 
 export function completeOnboarding(input: {
   name: string; signature?: string; providerId: string; apiKey: string; baseUrl?: string; modelId: string;
+  models?: ModelInfo[]; reasoningLevel?: ReasoningPreference;
 }): { settings: AppSettings; provider: ProviderInfo } {
   const name = input.name.trim();
   if (!name) throw new Error('请填写称呼');
   if (!input.providerId || !input.modelId) throw new Error('请选择模型供应商和模型');
   const provider = getProviderRow(input.providerId);
   if (!provider) throw new Error('供应商不存在');
-  const models = parseJson<ModelInfo[]>(provider.models, []);
-  if (!models.some((m) => m.id === input.modelId)) throw new Error('模型不存在');
+  const models = input.models?.length ? input.models : parseJson<ModelInfo[]>(provider.models, []);
+  const selected = models.find((m) => m.id === input.modelId);
+  if (!selected) throw new Error('模型不存在或不在本次拉取的列表中');
+  const reasoningLevel: ReasoningPreference = input.reasoningLevel || 'default';
+  if (reasoningLevel !== 'default' && !selected.reasoning?.includes(reasoningLevel)) {
+    throw new Error('该模型不支持所选推理等级');
+  }
   const key = input.apiKey.trim();
   if (provider.kind !== 'mock' && provider.id !== 'ollama' && !key) {
     throw new Error('请填写 API Key');
@@ -896,6 +893,7 @@ export function completeOnboarding(input: {
     apiKey: key || undefined,
     baseUrl: input.baseUrl?.trim() || provider.base_url,
     enabled: true,
+    models,
     enabledModels: [input.modelId],
   });
   if (!updated) throw new Error('供应商配置失败');
@@ -904,6 +902,7 @@ export function completeOnboarding(input: {
     onboarding: { completed: true },
     defaultModel: { providerId: input.providerId, modelId: input.modelId },
     fallbackModel: null,
+    reasoningLevel,
   });
   return { settings, provider: updated };
 }

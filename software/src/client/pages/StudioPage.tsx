@@ -336,6 +336,7 @@ export function StudioPage() {
         prompt,
         providerId: settings.defaultModel?.providerId,
         modelId: settings.defaultModel?.modelId,
+        reasoning: settings.reasoningLevel,
         regenerate,
         replaceMessageId,
       }, {

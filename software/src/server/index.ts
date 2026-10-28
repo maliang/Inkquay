@@ -28,6 +28,7 @@ import {
   importProjectBundle,
   getChapter,
   getProjectDetail,
+  getProviderRow,
   getSettings,
   listChapterVersions,
   listProjectVersions,
@@ -52,6 +53,8 @@ import {
   updateShot,
 } from './repository.ts';
 import { streamAssistant } from './ai.ts';
+import { fetchProviderModels } from './models.ts';
+import { decryptSecret } from './crypto.ts';
 import type { AiStreamRequest, AppSettings, ChapterPatch, ModelInfo, ProjectBundle } from '../shared/types.ts';
 
 const app = express();
@@ -359,6 +362,27 @@ app.post('/api/providers/:id/test', async (req, res) => {
   res.status(result.ok ? 200 : 400).json(result);
 });
 
+app.post('/api/providers/:id/models', async (req, res) => {
+  const row = getProviderRow(req.params.id);
+  if (!row) return res.status(404).json({ error: '供应商不存在' });
+  const body = req.body || {};
+  const apiKey = typeof body.apiKey === 'string' && body.apiKey.trim()
+    ? body.apiKey.trim()
+    : decryptSecret(row.api_key_enc);
+  try {
+    const result = await fetchProviderModels({
+      providerId: row.id,
+      kind: row.kind,
+      baseUrl: String(body.baseUrl || row.base_url || ''),
+      apiKey,
+      existing: JSON.parse(String(row.models || '[]')) as ModelInfo[],
+    });
+    res.json({ ok: true, message: result.message, models: result.models });
+  } catch (error) {
+    res.status(400).json({ ok: false, message: error instanceof Error ? error.message : '拉取模型失败', models: [] });
+  }
+});
+
 app.get('/api/projects/:id/export.docx', async (req, res) => {
   const project = getProjectDetail(req.params.id);
   if (!project) return res.status(404).json({ error: '作品不存在' });
@@ -437,6 +461,7 @@ app.post('/api/ai/stream', async (req, res) => {
       mode: body.mode,
       regenerate: Boolean(body.regenerate),
       replaceMessageId: body.replaceMessageId,
+      reasoning: body.reasoning,
       signal: controller.signal,
     });
   } catch (error) {

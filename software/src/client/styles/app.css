@@ -1554,3 +1554,15 @@ html[data-theme="paper"] .onboarding-preview {
   border-left: 2px dashed var(--line-strong);
   padding-left: 8px;
 }
+
+.onboarding-discover {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 2px 0 4px;
+}
+.onboarding-discover .field-hint {
+  flex: 1;
+  min-width: 180px;
+}
