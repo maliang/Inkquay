@@ -1,0 +1,188 @@
+{
+  "ranAt": "2026-10-29T09:57:28.014Z",
+  "port": 8831,
+  "dataDir": "/var/folders/4b/_pvt88bx3lj50n60zdv_0pzr0000gn/T/qa-e2e-api-3Xi2kW",
+  "results": [
+    {
+      "id": "A0",
+      "title": "环境准备：onboarding + mock 供应商（显式选择才允许 mock）",
+      "status": "passed",
+      "evidence": "precheck ok → mock/mock-writer"
+    },
+    {
+      "id": "A1",
+      "title": "「新建并让 AI 企划」成功路径：创建即返回、job 立刻可见、进度持续变化",
+      "status": "passed",
+      "evidence": "创建 7ms 返回 201；观测 1 次状态变化，最大间隔 0ms；p1=review/6 条；nextStep=review-p1；时间线=16ms:done/setting/items=6"
+    },
+    {
+      "id": "A2",
+      "title": "AI 企划失败（供应商不可达）：结构化错误码、无伪造内容、状态可读",
+      "status": "passed",
+      "evidence": "job state=failed code=NETWORK；p1 条目 0；lastError=NETWORK；retry → 202 并再次失败但无脏数据"
+    },
+    {
+      "id": "A3",
+      "title": "AI 企划取消：≤2s 停止、上游 ≤5s 释放、被取消步零写入、留可重试出路",
+      "status": "passed",
+      "evidence": "cancel→terminal 5ms；上游释放 3ms；被取消步写入 0 条；retry → 202"
+    },
+    {
+      "id": "B1",
+      "title": "越阶确认必须被拒（未确认 p1 时确认 p2 → STAGE_LOCKED）",
+      "status": "passed",
+      "evidence": "p2 confirm → 409 STAGE_LOCKED"
+    },
+    {
+      "id": "B2",
+      "title": "P1 设定：编辑条目落库并产生修订；给 AI 意见后重生成",
+      "status": "passed",
+      "evidence": "编辑后修订 2 条；整阶段无确认 → 422 CONFIRM_BLOCKED；按单条意见重生成后 8 条；短意见 → 422 NOTE_TOO_SHORT"
+    },
+    {
+      "id": "B2b",
+      "title": "修订历史要能区分「AI 首次生成」与「按你的意见重生成」",
+      "status": "passed",
+      "evidence": "来源集合 [\"ai_feedback\",\"manual\",\"ai_initial\"]，其中 ai_feedback 1 条"
+    },
+    {
+      "id": "B3",
+      "title": "P1 确认 → 解锁 P2；确认快照只增不改",
+      "status": "passed",
+      "evidence": "p1=confirmed，确认快照 1 条，nextStep=generate-p2"
+    },
+    {
+      "id": "B4",
+      "title": "P2 大纲：生成幕与节拍 → 编辑 → 单条意见重生成 → 确认",
+      "status": "passed",
+      "evidence": "幕 3 / 节拍 9；人工改过的幕在重生成后保留；p2=confirmed，nextStep=generate-p3"
+    },
+    {
+      "id": "B5",
+      "title": "P3 章节计划：函数/梗概/字数范围；字数分配两步（预览 + 应用）",
+      "status": "passed",
+      "evidence": "章节 27；预览不改库；apply 后 Σtarget=89991（±25% 内）；手改行再覆盖 → 422 TARGET_EDITED"
+    },
+    {
+      "id": "B6",
+      "title": "P3 确认门槛：Σtarget 偏差超 ±25% 需显式接受才可确认",
+      "status": "passed",
+      "evidence": "偏差超限 confirm → 422（原因：总目标 8640 字 / 全书目标 80000 字（-89.2%），超出 ±25%）；接受偏差+恢复合理字数后确认成功；p3=confirmed"
+    },
+    {
+      "id": "B7",
+      "title": "P4 逐章生成：每章都写、字数落在范围内、只写目标章",
+      "status": "passed",
+      "evidence": "27 章全部有正文；字数全部落在 [min,max]；状态 in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review/in_review；job=done"
+    },
+    {
+      "id": "B8",
+      "title": "审阅：通过 / 退回（必须写意见）/ 重写单章不影响其他章 / 版本可恢复",
+      "status": "passed",
+      "evidence": "通过 #1；退回 #2 需意见（无意见 422）；单章重写只改目标章；版本 2 条并可恢复；状态 0:approved,1:in_review,2:in_review,3:in_review,4:in_review,5:in_review,6:in_review,7:in_review,8:in_review,9:in_review,10:in_review,11:in_review,12:in_review,13:in_review,14:in_review,15:in_review,16:in_review,17:in_review,18:in_review,19:in_review,20:in_review,21:in_review,22:in_review,23:in_review,24:in_review,25:in_review,26:in_review"
+    },
+    {
+      "id": "B9",
+      "title": "P3 减章：有正文时不得静默丢正文（CONTENT_WOULD_BE_LOST）",
+      "status": "passed",
+      "evidence": "count 27→25 → 422 CONTENT_WOULD_BE_LOST"
+    },
+    {
+      "id": "C1",
+      "title": "短篇创建 + 企划：与长篇同一套阶段，但 plan 用节拍",
+      "status": "passed",
+      "evidence": "短篇 p1=review/6 条；chapters 行 0"
+    },
+    {
+      "id": "C2",
+      "title": "短篇 P2 → P3：节拍计划而非章节，且不建空章节",
+      "status": "passed",
+      "evidence": "节拍 5 个，全部 kind=beat；chapters 行 0；nextStep=\"检查节拍字数并确认\""
+    },
+    {
+      "id": "C3",
+      "title": "短篇 P4：逐节拍写作、审阅，全程无章节行",
+      "status": "passed",
+      "evidence": "5 个节拍全部有正文；chapters 行 0；人工通过后状态 approved_manual"
+    },
+    {
+      "id": "D1",
+      "title": "暂停（D4）：≤2s 受理（pausing + pausePending）→ 当前章写完落库 → 落定 paused",
+      "status": "passed",
+      "evidence": "暂停受理 5ms（state=pausing, pausePending=true）→ 当前章写完落库 2195ms → state=paused；该章 1170 字；nextStep=resume-writing"
+    },
+    {
+      "id": "D2",
+      "title": "暂停后「继续写作」可用：从下一个待写单元续写，已写内容逐字节不变",
+      "status": "passed",
+      "evidence": "continue → 202（续写 9 个单元）；已写 1 → 2 章；已写内容逐字节不变"
+    },
+    {
+      "id": "D4",
+      "title": "立即停止（D4）：≤2s 丢弃当前章、不留半截正文；停止后不能 continue 但可重新开始",
+      "status": "passed",
+      "evidence": "停止 7ms 生效（state=cancelled）；当前章正文已丢弃；continue → 400；重新开始 → 202（有出路）"
+    },
+    {
+      "id": "D3",
+      "title": "刷新/重启：进程被 kill 后 job=interrupted，retry 从断点续写且已写章节逐字节不变",
+      "status": "passed",
+      "evidence": "kill 后 job=interrupted；已写 10 章逐字节不变；retry → 202 且保留全部已写内容"
+    },
+    {
+      "id": "E1",
+      "title": "旧项目夹具：正文 + 版本 + 人物 + 大纲",
+      "status": "passed",
+      "evidence": "legacy=p_mvtddhkm_drvuhk，正文 54 字，版本 1 条，人物 1 个，幕 3"
+    },
+    {
+      "id": "E2",
+      "title": "升级到流水线：九条校验全过、正文逐字节不变、P3 不被自动确认",
+      "status": "passed",
+      "evidence": "checks=9 全过；备份=studio.db.bak-mig_mvtddhlf_4j3zfq；正文逐字节一致；版本 1；p1=confirmed / p3=review"
+    },
+    {
+      "id": "E3",
+      "title": "迁移可重入 + 回退后正文与版本仍可读 + 可再迁移",
+      "status": "passed",
+      "evidence": "二次迁移 alreadyMigrated；回退后正文/版本不变（1 条）；再迁移 done"
+    },
+    {
+      "id": "E4",
+      "title": "迁移失败：有明确提示、旧数据仍可打开、失败后可重试成功",
+      "status": "passed",
+      "evidence": "forceFail → 500 MIGRATION_CHECK_FAILED；migration.state=failed 且有 error；旧正文仍可读；重试 → done"
+    },
+    {
+      "id": "F1",
+      "title": "无默认模型：precheck 与创建都明确报错，且不落空壳",
+      "status": "passed",
+      "evidence": "precheck=NO_DEFAULT_MODEL；create → 422 NO_DEFAULT_MODEL；作品数不变 8"
+    },
+    {
+      "id": "F2",
+      "title": "无 API Key：明确报错且不落空壳",
+      "status": "passed",
+      "evidence": "precheck=NO_API_KEY；create → 422 NO_API_KEY；作品数不变"
+    },
+    {
+      "id": "F3",
+      "title": "绝不静默 mock：真实供应商失败时不产出任何正文（含 mock 特征文本）",
+      "status": "passed",
+      "evidence": "真实供应商失败 → 无任何 mock 文本/正文/设定；显式 mock → 正常生成 6 条"
+    },
+    {
+      "id": "G1",
+      "title": "创建幂等：同 Idempotency-Key 只建一个作品",
+      "status": "passed",
+      "evidence": "201 → 200，同一 project=p_mvtddij8_of561w，作品数 +1"
+    },
+    {
+      "id": "G2",
+      "title": "并发保护：单作品同时只能有一个生成任务",
+      "status": "passed",
+      "evidence": "第二次启动 → 409 CONCURRENT_JOB"
+    }
+  ],
+  "defects": []
+}

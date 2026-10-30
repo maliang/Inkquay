@@ -1,0 +1,261 @@
+{
+  "_meta": {
+    "task": "t16 verification-round-3",
+    "when": "2026-10-29",
+    "note": "两个一次性探针（/tmp/probe-t16.mjs、/tmp/probe-t16b.mjs）的原始输出，脚本已删"
+  },
+  "probe_t16_v1": {
+    "checks": [
+      {
+        "id": "setup.p1-confirm",
+        "ok": true,
+        "detail": "p1 confirm → 200"
+      },
+      {
+        "id": "setup.p2-confirm",
+        "ok": true,
+        "detail": "p2 confirm → 200"
+      },
+      {
+        "id": "setup.p3-confirm",
+        "ok": true,
+        "detail": "p3 confirm → 200 "
+      },
+      {
+        "id": "setup.order",
+        "ok": true,
+        "detail": "p1=confirmed p2=confirmed p3=confirmed"
+      },
+      {
+        "id": "api.edit-ok",
+        "ok": true,
+        "detail": "PATCH item chr_mvszis8e_iutupw → 200"
+      },
+      {
+        "id": "api.p2-stale-after-upstream-edit",
+        "ok": true,
+        "detail": "p2 status=confirmed staleReason=\"p1:edited\""
+      },
+      {
+        "id": "api.p2-not-rolled-back",
+        "ok": true,
+        "detail": "p2 status=confirmed（INV-1：stale 不回滚已确认）"
+      },
+      {
+        "id": "api.p3-stale-after-upstream-edit",
+        "ok": true,
+        "detail": "p3 status=confirmed staleReason=\"p1:edited\""
+      },
+      {
+        "id": "api.p1-self-review",
+        "ok": true,
+        "detail": "p1 被编辑后自身 status=review（R2：确认阶段被改需重新确认）"
+      },
+      {
+        "id": "ui.banner-visible-confirmed",
+        "ok": true,
+        "detail": "banner[data-state=stale] count=1"
+      },
+      {
+        "id": "ui.anchor-stage-stale-banner",
+        "ok": true,
+        "detail": "[data-testid=stage-stale-banner] count=1"
+      },
+      {
+        "id": "ui.text-confirmed-copy",
+        "ok": true,
+        "detail": "文案=\"上游已变更，建议复核后再确认 设定已被编辑。本阶段内容没有自动改动，你可以选择怎么处理；已经被确认的内容仍然按确认时的那一版保留。 复核并保留 按上游重排 忽略\""
+      },
+      {
+        "id": "ui.text-humanized",
+        "ok": true,
+        "detail": "含「设定已被编辑」=true；含内部码=false"
+      },
+      {
+        "id": "ui.three-keys-usable",
+        "ok": true,
+        "detail": "stage-stale-keep:visible=true,enabled=true | stage-stale-regenerate:visible=true,enabled=true | stage-stale-ignore:visible=true,enabled=true"
+      },
+      {
+        "id": "ui.ignore-keeps-banner",
+        "ok": true,
+        "detail": "点忽略后 banner count=1"
+      },
+      {
+        "id": "api.ignore-keeps-stale",
+        "ok": true,
+        "detail": "点忽略后 staleReason=\"p1:edited\""
+      },
+      {
+        "id": "ui.keep-clears-banner",
+        "ok": true,
+        "detail": "点复核并保留后 banner count=0"
+      },
+      {
+        "id": "api.keep-clears-stale",
+        "ok": true,
+        "detail": "staleReason=null"
+      },
+      {
+        "id": "api.keep-stays-confirmed",
+        "ok": true,
+        "detail": "p2 status=confirmed"
+      },
+      {
+        "id": "api.re-edit-ok",
+        "ok": true,
+        "detail": "二次 PATCH → 200"
+      },
+      {
+        "id": "api.stale-back-after-reedit",
+        "ok": false,
+        "detail": "二次编辑（p1 当时已是 review）后 p2 staleReason=null（期望 p1:edited）"
+      },
+      {
+        "id": "ui.banner-back-after-reedit",
+        "ok": false,
+        "detail": "二次编辑后 banner count=0"
+      },
+      {
+        "id": "setup.p1-reconfirm",
+        "ok": true,
+        "detail": "p1 重新确认 → 200"
+      },
+      {
+        "id": "setup.stale-forced",
+        "ok": true,
+        "detail": "第三次编辑后 p2 staleReason=\"p1:edited\""
+      },
+      {
+        "id": "ui.regenerate-starts-job",
+        "ok": false,
+        "detail": "20s 内没有出现 regen-stage/p2 的 job"
+      },
+      {
+        "id": "ui.review-state-banner",
+        "ok": true,
+        "detail": "review 态 banner count=1"
+      },
+      {
+        "id": "ui.review-state-copy",
+        "ok": false,
+        "detail": "review 文案=\"上游已变更，建议复核后再确认 设定已被编辑。本阶段内容没有自动改动，你可以选择怎么处理；已经被确认的内容仍然按确认时的那一版保留。 复核并保留 按上游重排 忽略\""
+      },
+      {
+        "id": "ui.p1-back-to-review",
+        "ok": true,
+        "detail": "stage-p1[data-status]=review"
+      },
+      {
+        "id": "spec-m3.add-delete-reorder-present",
+        "ok": false,
+        "detail": "P2 视图里的增删/重排按钮=[]；POST /items → 404；DELETE /items/:id → 404"
+      },
+      {
+        "id": "ui.no-unexpected-http-errors",
+        "ok": false,
+        "detail": "非轮询竞态的 4xx/5xx：[{\"status\":409,\"url\":\"/api/projects/p_mvszis7r_ke7bhw/stages/p2/stale/resolve\",\"method\":\"POST\"}]"
+      },
+      {
+        "id": "ui.no-page-errors",
+        "ok": true,
+        "detail": "pageerror=[]"
+      }
+    ],
+    "shots": [
+      "/Users/maliang/Documents/develop/maliang/私家写手/team/inkquay-ai-first/evidence/ui-shots/qa-t16-stale-confirmed-p2.png",
+      "/Users/maliang/Documents/develop/maliang/私家写手/team/inkquay-ai-first/evidence/ui-shots/qa-t16-stale-kept-p2.png",
+      "/Users/maliang/Documents/develop/maliang/私家写手/team/inkquay-ai-first/evidence/ui-shots/qa-t16-stale-review-p2.png"
+    ],
+    "notes": [
+      "p1 重新确认后：p1=confirmed p2=confirmed/stale=null"
+    ]
+  },
+  "probe_t16b_v2": {
+    "checks": [
+      {
+        "id": "setup.all-confirmed",
+        "ok": true,
+        "detail": "p1=confirmed p2=confirmed p3=confirmed"
+      },
+      {
+        "id": "A.stale-setup",
+        "ok": true,
+        "detail": "p1=review；p2=confirmed/stale=\"p1:edited\""
+      },
+      {
+        "id": "A.banner",
+        "ok": true,
+        "detail": "banner=1"
+      },
+      {
+        "id": "A.regenerate-works-in-banner-state",
+        "ok": false,
+        "detail": "点「按上游重排」后 toast=\"请先完成上一步\"；lastJob=plan/p3/done；HTTP=[{\"status\":409,\"method\":\"POST\",\"url\":\"/api/projects/p_mvszltry_g9xrnk/stages/p2/stale/resolve\"}]"
+      },
+      {
+        "id": "B.p1-reconfirm",
+        "ok": true,
+        "detail": "p1 confirm → 200"
+      },
+      {
+        "id": "B.regenerate-after-reconfirm",
+        "ok": true,
+        "detail": "重新确认 p1 后 banner=1；job=regen-stage/p2/done"
+      },
+      {
+        "id": "B.p2-back-to-review",
+        "ok": true,
+        "detail": "重排完成后 p2=review stale=null"
+      },
+      {
+        "id": "C.p2-confirmed-again",
+        "ok": true,
+        "detail": "p2 confirm → 200"
+      },
+      {
+        "id": "C.stale-after-edit",
+        "ok": true,
+        "detail": "编辑 p1 后 p2 stale=\"p1:edited\" p1=review"
+      },
+      {
+        "id": "C.keep-cleared",
+        "ok": true,
+        "detail": "keep 后 p2=confirmed/stale=null"
+      },
+      {
+        "id": "C.stale-should-return",
+        "ok": false,
+        "detail": "再次编辑 p1（p1 当时=review）后 p2 stale=null、banner=0（期望 p1:edited / 1）"
+      },
+      {
+        "id": "D.p2-edit",
+        "ok": true,
+        "detail": "PATCH p2 幕 act_mvszlyq5_aqt29r → 200"
+      },
+      {
+        "id": "D.review-plus-stale",
+        "ok": true,
+        "detail": "p2=review/stale=\"p1:edited\"；p1=review"
+      },
+      {
+        "id": "D.review-copy",
+        "ok": true,
+        "detail": "review 态文案=\"上游已变更 设定已被编辑。本阶段内容没有自动改动，你可以选择怎么处理。 复核并保留 按上游重排 忽略\""
+      },
+      {
+        "id": "E.no-page-errors",
+        "ok": true,
+        "detail": "pageerror=[]"
+      }
+    ],
+    "shots": [
+      "/Users/maliang/Documents/develop/maliang/私家写手/team/inkquay-ai-first/evidence/ui-shots/qa-t16b-regenerate-blocked.png",
+      "/Users/maliang/Documents/develop/maliang/私家写手/team/inkquay-ai-first/evidence/ui-shots/qa-t16b-stale-lost-after-reedit.png",
+      "/Users/maliang/Documents/develop/maliang/私家写手/team/inkquay-ai-first/evidence/ui-shots/qa-t16b-stale-review-p2.png"
+    ],
+    "notes": [
+      "HTTP≥400 全量：[{\"status\":409,\"method\":\"POST\",\"url\":\"/api/projects/p_mvszltry_g9xrnk/stages/p2/stale/resolve\"}]"
+    ]
+  }
+}

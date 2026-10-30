@@ -1,0 +1,125 @@
+{
+  "sampledAt": "2026-10-29T09:59:36.927Z",
+  "head": "ae75612",
+  "probes": {
+    "integrityAndN7N10": [
+      {
+        "step": "A0 onboarding",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "step": "A0 precheck",
+        "ok": true,
+        "provider": "mock",
+        "model": "mock-writer"
+      },
+      {
+        "step": "A1 migrate novel",
+        "status": 200,
+        "state": "done",
+        "checks": 9,
+        "failed": 0
+      },
+      {
+        "step": "A2 novel after migrate",
+        "contentSame": true,
+        "wordsSame": true,
+        "versionsSame": true,
+        "charactersSame": true,
+        "actsSame": true,
+        "beatsSame": true
+      },
+      {
+        "step": "B3 N10 p3 revisions after migrate",
+        "count": 1,
+        "notes": [
+          "迁移快照"
+        ],
+        "ledgerVisible": false
+      },
+      {
+        "step": "A3 rollback novel",
+        "status": 200,
+        "state": "rolled_back",
+        "archived": [],
+        "deleted": [],
+        "legacyIdsKnown": true
+      },
+      {
+        "step": "A4 novel after rollback",
+        "contentSame": true,
+        "wordsSame": true,
+        "versionsSame": true,
+        "charactersSame": true,
+        "actsSame": true,
+        "beatsSame": true,
+        "exactText": true
+      },
+      {
+        "step": "A5 novel units after rollback",
+        "count": 1,
+        "titles": [
+          "未命名章节"
+        ],
+        "note": "长篇 units 来自 chapters，回退保留用户章属预期"
+      },
+      {
+        "step": "B1 short after migrate",
+        "status": 200,
+        "state": "done",
+        "units": 1,
+        "titles": [
+          "未命名章节"
+        ]
+      },
+      {
+        "step": "B2 N7 short units after rollback",
+        "status": "PASS",
+        "count": 0,
+        "titles": [],
+        "rollbackState": "rolled_back"
+      },
+      {
+        "step": "B2b short text after rollback",
+        "same": true,
+        "chapters": 1,
+        "pipelineStatus": "legacy"
+      },
+      {
+        "step": "C2 N9 hand edit via items",
+        "status": 200
+      },
+      {
+        "step": "C3 N9 hand edit via units",
+        "status": 200
+      },
+      {
+        "step": "C4 N9 unit revisions",
+        "count": 2,
+        "sources": [
+          "manual",
+          "manual"
+        ]
+      },
+      {
+        "step": "C5 N9 regenerate without confirm (expect 422)",
+        "status": 422,
+        "code": "CONFIRM_BLOCKED",
+        "requiresConfirm": "overwrite",
+        "blockers": [
+          "手改：未命名章节"
+        ]
+      },
+      {
+        "step": "C6 N9 regenerate with confirm (expect 202)",
+        "status": 202,
+        "jobState": "queued"
+      }
+    ]
+  },
+  "n8CrashProbe": {
+    "outcome": "inconclusive-by-design",
+    "reason": "mock 步骤在事件循环内同步完成，无法在 step_index>=1 窗口击杀；慢供应商下 p2 重建返回 INVALID_JSON（假供应商 JSON 与 validateActs 期望不符），崩溃分支仅做代码复核"
+  }
+}

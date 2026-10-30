@@ -11,6 +11,9 @@ import { Icon } from '../components/Icon';
 import { useApp } from '../context/AppContext';
 import { registerCloseGuard } from '../lib/closeGuard';
 import { useToast } from '../components/Toast';
+import { pipelineApi, type PipelineUnit, type UnitVersionRow } from '../lib/pipeline/api';
+import { errorCopy, formatDateTime, reviewStatusLabel, unitLabel } from '../lib/pipeline/format';
+import { PipelineRequestError } from '../lib/pipeline/http';
 
 const typeLabel: Record<string, string> = { novel: '长篇小说', short: '短篇小说', screenplay: '电影剧本', series: '剧集大纲' };
 
@@ -63,6 +66,16 @@ export function StudioPage() {
   const [selectionText, setSelectionText] = useState('');
   const [rewriteSource, setRewriteSource] = useState('');
   const [rewriteMessageId, setRewriteMessageId] = useState('');
+  // 流水线：审阅模式（?review=1）与作品形态探测
+  const [pipelineProject, setPipelineProject] = useState(false);
+  const [reviewUnits, setReviewUnits] = useState<PipelineUnit[]>([]);
+  const [reviewBusy, setReviewBusy] = useState('');
+  const [reviewNote, setReviewNote] = useState('');
+  const [reviewNoteOpen, setReviewNoteOpen] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [reviewVersions, setReviewVersions] = useState<UnitVersionRow[] | null>(null);
+  /** 审阅中的节拍正文（短篇没有 chapters 行，正文只存在 p4 items 的 body 里）。 */
+  const [reviewBeatBody, setReviewBeatBody] = useState<{ id: string; body: string } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<number | null>(null);
@@ -72,8 +85,17 @@ export function StudioPage() {
   const lastSnapshotRef = useRef<{ at: number; length: number }>({ at: 0, length: 0 });
   const lastSnapshotContentRef = useRef('');
   const activeRef = useRef<{ id: string; title: string; content: string }>({ id: '', title: '', content: '' });
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const reviewMode = searchParams.get('review') === '1';
+  const requestedChapter = searchParams.get('chapter');
+  const requestedChapterRef = useRef<string | null>(null);
+  if (requestedChapterRef.current === null) requestedChapterRef.current = requestedChapter || '';
 
   const activeChapter = useMemo(() => project?.chapters.find((c) => c.id === activeId) || null, [project, activeId]);
+  // 长短篇同一套审阅界面：短篇的「单元」是节拍，正文在 stage_items.body 里，不在 chapters。
+  const pipelineKind: 'novel' | 'short' = project?.type === 'short' ? 'short' : 'novel';
+  const unitWord = unitLabel(pipelineKind);
+  const activeIsBeat = Boolean(activeId) && !activeChapter;
   const currentProvider = providers.find((p) => p.id === settings.defaultModel?.providerId);
   const currentModel = settings.defaultModel ? modelLabel(currentProvider, settings.defaultModel.modelId) : '未配置模型';
   const words = countWords(content);
@@ -105,7 +127,9 @@ export function StudioPage() {
         setLoadError('');
         rememberProject(next.id);
         const remembered = localStorage.getItem(`pw.chapter.${next.id}`);
-        const preferred = next.chapters.find((c) => c.id === remembered)
+        const requested = requestedChapterRef.current;
+        const preferred = (requested ? next.chapters.find((c) => c.id === requested) : undefined)
+          || next.chapters.find((c) => c.id === remembered)
           || next.chapters.find((c) => c.status === '初稿' && c.content)
           || [...next.chapters].reverse().find((c) => c.content)
           || next.chapters[0];
@@ -170,6 +194,158 @@ export function StudioPage() {
     chat.scrollTo({ top: chat.scrollHeight, behavior: streaming ? 'auto' : 'smooth' });
   }, [messages, streamText, streaming]);
 
+  // 流水线作品：从作品库直接点进来时回到企划工作台，不要落在空正文上；
+  // 只有明确带 ?chapter=<id>（流水线里的「审阅 / 编辑」）或 ?review=1 才留在写作台。
+  useEffect(() => {
+    if (!project) return;
+    if (project.type !== 'novel' && project.type !== 'short') return;
+    let alive = true;
+    pipelineApi.snapshot(project.id)
+      .then((snap) => {
+        if (!alive) return;
+        const legacy = snap.project.pipelineStatus === 'legacy' || snap.migration?.state === 'legacy';
+        if (legacy) return;
+        setPipelineProject(true);
+        if (reviewMode || requestedChapter) return;
+        navigate(`/project/${project.id}/pipeline`, { replace: true });
+      })
+      .catch(() => {
+        // 剧本/系列作品没有流水线；legacy 作品也走这里，保持原有写作台。
+      });
+    return () => { alive = false; };
+  }, [project, reviewMode, requestedChapter, navigate]);
+
+  const refreshReview = useCallback(async () => {
+    if (!project || !reviewMode) return;
+    try {
+      const { units: rows } = await pipelineApi.units(project.id);
+      setReviewUnits(rows);
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : '审阅队列加载失败');
+    }
+  }, [project, reviewMode]);
+
+  useEffect(() => { void refreshReview(); }, [refreshReview]);
+
+  const reviewQueue = useMemo(
+    () => reviewUnits.filter((unit) => unit.reviewStatus === 'in_review' || unit.reviewStatus === 'changes_requested'),
+    [reviewUnits],
+  );
+  const reviewUnit = useMemo(
+    () => reviewUnits.find((unit) => unit.id === activeId) || null,
+    [reviewUnits, activeId],
+  );
+  const reviewIndex = reviewQueue.findIndex((unit) => unit.id === activeId);
+
+  const reloadProject = useCallback(async () => {
+    try {
+      const { project: next } = await api.project(projectId);
+      setProject(next);
+      return next;
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '作品刷新失败', 'warn');
+      return null;
+    }
+  }, [projectId, toast]);
+
+  /** 短篇节拍正文只在 p4 stage_items 的 body 里，取一次供只读预览使用。 */
+  const readBeatBody = useCallback(
+    async (unitId: string) => {
+      if (!project) return '';
+      try {
+        const { items } = await pipelineApi.items(project.id, 'p4');
+        return items.find((item) => item.id === unitId)?.body || '';
+      } catch {
+        return '';
+      }
+    },
+    [project],
+  );
+
+  const runReview = useCallback(async (action: 'approve' | 'request_changes' | 'manual_approve' | 'skip' | 'rewrite') => {
+    if (!project || !reviewUnit) return;
+    if (action === 'request_changes' && reviewNote.trim().length < 2) {
+      setReviewError('请先写清楚要改什么（至少 2 个字）');
+      setReviewNoteOpen(true);
+      return;
+    }
+    setReviewBusy(action);
+    setReviewError('');
+    try {
+      await pipelineApi.reviewChapter(reviewUnit.id, {
+        action,
+        ...(action === 'request_changes' ? { note: reviewNote.trim() } : {}),
+        ...(action === 'rewrite' ? { note: reviewNote.trim() || undefined, mode: 'single' as const } : {}),
+      });
+      setReviewNote('');
+      setReviewNoteOpen(false);
+      if (action === 'rewrite') {
+        toast(`已开始重写这一${unitWord}，进度在企划工作台查看`, 'ok');
+        navigate(`/project/${project.id}/pipeline`);
+        return;
+      }
+      const label = action === 'approve' ? '已通过' : action === 'manual_approve' ? '已按人工修改通过' : action === 'skip' ? `已跳过本${unitWord}` : '已退回重写';
+      toast(label, 'ok');
+      const next = await reloadProject();
+      // 一次请求拿全队列：以前这里连发两次 units()，第二次把第一次的结果直接覆盖掉。
+      const refreshed = (await pipelineApi.units(project.id)).units;
+      setReviewUnits(refreshed);
+      const remaining = refreshed.filter((unit) => unit.reviewStatus === 'in_review' || unit.reviewStatus === 'changes_requested');
+      const following = remaining.find((unit) => unit.ordinal > (reviewUnit.ordinal || 0)) || remaining[0];
+      if (!following) {
+        toast('这一轮审阅做完了', 'ok');
+        navigate(`/project/${project.id}/pipeline`);
+        return;
+      }
+      // 下一单元可能是章（长篇）也可能是节拍（短篇）：短篇正文来自 p4 items 的 body。
+      const chapter = next?.chapters.find((c) => c.id === following.id);
+      const body = chapter ? chapter.content : await readBeatBody(following.id);
+      const heading = chapter ? chapter.title : following.title;
+      setReviewBeatBody(chapter ? null : { id: following.id, body });
+      setActiveId(following.id);
+      setTitle(heading);
+      setContent(body);
+      activeRef.current = { id: following.id, title: heading, content: body };
+      lastSnapshotRef.current = { at: Date.now(), length: body.length };
+      lastSnapshotContentRef.current = body;
+    } catch (err) {
+      const code = err instanceof PipelineRequestError ? err.code : 'NETWORK';
+      setReviewError(errorCopy(code).title);
+      toast(errorCopy(code).title, 'warn');
+    } finally {
+      setReviewBusy('');
+    }
+  }, [project, readBeatBody, reviewUnit, reviewNote, reloadProject, navigate, toast, unitWord]);
+
+  const openReviewVersions = useCallback(async () => {
+    if (!project || !reviewUnit) return;
+    try {
+      const { versions: rows } = await pipelineApi.unitVersions(project.id, reviewUnit.id);
+      setReviewVersions(rows);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '版本加载失败', 'warn');
+    }
+  }, [project, reviewUnit, toast]);
+
+  const restoreReviewVersion = useCallback(async (versionId: string) => {
+    if (!project || !reviewUnit) return;
+    try {
+      await pipelineApi.restoreUnitVersion(project.id, reviewUnit.id, versionId);
+      const next = await reloadProject();
+      const chapter = next?.chapters.find((c) => c.id === reviewUnit.id);
+      if (chapter) {
+        setTitle(chapter.title);
+        setContent(chapter.content);
+        activeRef.current = { id: chapter.id, title: chapter.title, content: chapter.content };
+        lastSnapshotContentRef.current = chapter.content;
+      }
+      setReviewVersions(null);
+      toast('已回到这一版', 'ok');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '恢复失败', 'warn');
+    }
+  }, [project, reviewUnit, reloadProject, toast]);
+
   const refreshVersions = useCallback(async () => {
     if (!project || (!activeId && versionScope === 'chapter')) return;
     try {
@@ -205,6 +381,11 @@ export function StudioPage() {
   const saveNow = useCallback(async () => {
     const active = activeRef.current;
     if (!active.id) return true;
+    // 短篇节拍没有 chapters 行：只读预览，不走 PATCH /api/chapters/:id（否则 404）。
+    if (!project?.chapters.some((chapter) => chapter.id === active.id)) {
+      setSaveState('saved');
+      return true;
+    }
     setSaveState('saving');
     try {
       const { chapter } = await api.updateChapter(active.id, { title: active.title, content: active.content });
@@ -228,7 +409,68 @@ export function StudioPage() {
       toast(err instanceof Error ? err.message : '保存失败', 'warn');
       return false;
     }
-  }, [refreshVersions, toast]);
+  }, [project?.chapters, refreshVersions, toast]);
+
+  /**
+   * 打开一个待审单元：长篇取 chapters.content，短篇取 p4 stage_items 的 body（只读预览）。
+   * 短篇没有 chapters 行，旧实现直接 return，于是「通过/退回」根本点不到。
+   */
+  const showReviewChapter = useCallback(
+    async (unitId: string) => {
+      if (!project) return;
+      if (activeRef.current.id === unitId) return;
+      // 切换单元前必须先把当前这一篇落盘：
+      // ① 不清 debounce（saveTimer）的话，定时器会在切换后触发，把上一篇的内容写进下一篇；
+      // ② 不 await 保存的话，点「下一篇」就把没保存的字丢了（U13）。
+      if (saveTimer.current) {
+        window.clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+      const saved = await saveNow();
+      if (!saved) {
+        toast('这一篇还没保存成功，先别切走：请再试一次保存', 'warn');
+        return;
+      }
+      const chapter = project.chapters.find((c) => c.id === unitId);
+      if (chapter) {
+        setReviewBeatBody(null);
+        setActiveId(chapter.id);
+        setTitle(chapter.title);
+        setContent(chapter.content);
+        activeRef.current = { id: chapter.id, title: chapter.title, content: chapter.content };
+        lastSnapshotRef.current = { at: Date.now(), length: chapter.content.length };
+        lastSnapshotContentRef.current = chapter.content;
+        return;
+      }
+      const unit = reviewUnits.find((row) => row.id === unitId);
+      if (!unit) return;
+      const body = await readBeatBody(unitId);
+      setReviewBeatBody({ id: unitId, body });
+      setActiveId(unitId);
+      setTitle(unit.title);
+      setContent(body);
+      activeRef.current = { id: unitId, title: unit.title, content: body };
+      lastSnapshotRef.current = { at: Date.now(), length: body.length };
+      lastSnapshotContentRef.current = body;
+    },
+    [project, readBeatBody, reviewUnits, saveNow, toast],
+  );
+
+  // 短篇没有 chapters 行，activeId 不会在打开作品时被初始化；进入审阅模式后必须自动选中
+  // 第一个待审单元，否则队列里明明有 8 个节拍，界面却显示「这一节拍不在待审队列里」，
+  // 通过 / 退回按钮根本出不来（DEF-2 的最后一环）。
+  useEffect(() => {
+    if (!reviewMode || !reviewQueue.length || reviewIndex >= 0) return;
+    void showReviewChapter(reviewQueue[0].id);
+  }, [reviewMode, reviewQueue, reviewIndex, showReviewChapter]);
+
+  const goReview = useCallback((offset: number) => {
+    if (!reviewQueue.length) return;
+    const base = reviewIndex < 0 ? 0 : reviewIndex;
+    const target = reviewQueue[Math.max(0, Math.min(reviewQueue.length - 1, base + offset))];
+    if (target) void showReviewChapter(target.id);
+  }, [reviewQueue, reviewIndex, showReviewChapter]);
+
 
   // 关窗守卫：这里只负责「先把稿子落盘」，ack 由 App 层唯一的监听统一做。
   useEffect(() => registerCloseGuard(async () => {
@@ -832,6 +1074,68 @@ export function StudioPage() {
       <section className="view view--studio is-active">
         <div className="studio">
           <div className="doc-pane">
+            {reviewMode && (
+              <section className="pipeline-review" data-testid="review-bar" aria-label="审阅队列">
+                <div className="pipeline-review__head">
+                  <div>
+                    <p className="pipeline-review__eyebrow">
+                      审阅队列 · 第 {(reviewIndex < 0 ? 0 : reviewIndex) + 1}/{reviewQueue.length} 篇
+                      <span className="pipeline-review__count" data-testid="review-queue-count">{reviewQueue.length} {unitWord}待审</span>
+                    </p>
+                    <strong>{reviewUnit ? `${activeChapter?.number || `第${reviewUnit.ordinal}${unitWord}`}《${reviewUnit.title}》` : `这一${unitWord}不在待审队列里`}</strong>
+                    {reviewUnit && (
+                      <span className="pipeline-review__meta">
+                        {formatNumber(reviewUnit.words)} 字（范围 {reviewUnit.minWords ?? '—'}–{reviewUnit.maxWords ?? '—'}）
+                        {' · '}{reviewStatusLabel(reviewUnit.reviewStatus, project.type === 'short' ? 'short' : 'novel')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="pipeline-review__nav">
+                    <button className="btn btn--tiny btn--ghost" type="button" disabled={reviewIndex <= 0} onClick={() => goReview(-1)}>上一篇</button>
+                    <button className="btn btn--tiny btn--ghost" type="button" disabled={reviewIndex < 0 || reviewIndex >= reviewQueue.length - 1} onClick={() => goReview(1)}>下一篇</button>
+                    <button className="btn btn--tiny btn--ghost" type="button" onClick={() => navigate(`/project/${project.id}/pipeline`)}>完成审阅</button>
+                  </div>
+                </div>
+                {reviewUnit && (
+                  <>
+                    <div className="pipeline-review__actions">
+                      <button className="btn btn--tiny btn--primary" type="button" data-testid="chapter-approve" disabled={Boolean(reviewBusy)} onClick={() => void runReview('approve')}>通过</button>
+                      <button className="btn btn--tiny btn--ghost" type="button" data-testid="chapter-request-changes" disabled={Boolean(reviewBusy)} onClick={() => { if (reviewNoteOpen && reviewNote.trim().length >= 2) void runReview('request_changes'); else setReviewNoteOpen(true); }}>退回重写</button>
+                      <button className="btn btn--tiny btn--ghost" type="button" data-testid="chapter-manual-approve" disabled={Boolean(reviewBusy)} onClick={() => void runReview('manual_approve')}>人工改后通过</button>
+                      <button className="btn btn--tiny btn--ghost" type="button" data-testid="chapter-skip" disabled={Boolean(reviewBusy)} onClick={() => void runReview('skip')}>跳过本{unitWord}</button>
+                      <button className="btn btn--tiny btn--ghost" type="button" data-testid="chapter-rewrite" disabled={Boolean(reviewBusy)} onClick={() => void runReview('rewrite')}>重写本{unitWord}</button>
+                      <button className="btn btn--tiny btn--ghost" type="button" data-testid="chapter-version-list" onClick={() => void openReviewVersions()}>版本历史</button>
+                      {reviewBusy && <span className="pipeline-review__busy">处理中…</span>}
+                    </div>
+                    {reviewNoteOpen && (
+                      <div className="pipeline-review__note">
+                        <textarea
+                          className="text-input"
+                          rows={2}
+                          value={reviewNote}
+                          placeholder="要改什么？例如：第二场的对峙太快，补一段沉默和视线交锋。"
+                          onChange={(event) => setReviewNote(event.target.value)}
+                        />
+                        <div className="pipeline-review__note-actions">
+                          <button className="btn btn--tiny btn--ghost" type="button" onClick={() => { setReviewNoteOpen(false); setReviewNote(''); }}>取消</button>
+                          <button className="btn btn--tiny btn--primary" type="button" disabled={reviewNote.trim().length < 2 || Boolean(reviewBusy)} onClick={() => void runReview('request_changes')}>退回并重写</button>
+                        </div>
+                      </div>
+                    )}
+                    {reviewError && <p className="pipeline-inline-error" data-testid="review-error">{reviewError}</p>}
+                  </>
+                )}
+              </section>
+            )}
+            {pipelineProject && !reviewMode && (
+              <div className="pipeline-inline-panel">
+                <p>这是 AI 流水线作品：阶段进度、逐章生成都在企划工作台。</p>
+                <div className="pipeline-inline-panel__actions">
+                  <Link className="btn btn--tiny btn--primary" to={`/project/${project.id}/pipeline`}>回企划工作台</Link>
+                  <Link className="btn btn--tiny btn--ghost" to={`/project/${project.id}/pipeline?stage=p4`}>逐章写作进度</Link>
+                </div>
+              </div>
+            )}
             <div className="doc-toolbar">
               <div className="doc-toolbar__group">
                 <button className="tool-btn" type="button" title="加粗" onClick={() => document.execCommand('bold')}><Icon name="bold" /></button>
@@ -902,6 +1206,14 @@ export function StudioPage() {
                     onChange={(next) => { selectionRangeRef.current = null; setSelectionText(''); setContent(next); scheduleSave(title, next); }}
                     onSelectionChange={(text, range) => { setSelectionText(text); selectionRangeRef.current = range; }}
                   />
+                ) : null}
+                {!activeChapter && reviewBeatBody ? (
+                  // 短篇节拍没有 chapters 行：这里给只读正文，编辑在企划工作台的节拍面板里做。
+                  <article className="editor" data-testid="beat-preview" aria-label="节拍正文（只读）">
+                    {(reviewBeatBody.body || '这一节拍还没有正文。').split(/\n{2,}/).map((para, index) => (
+                      <p key={index}>{para}</p>
+                    ))}
+                  </article>
                 ) : null}
                 <div className="ghost-block">
                   <div className="ghost-block__head"><span><Icon name="spark" /> AI 建议续写</span><span className="ghost-block__hint">{streaming ? '正在生成' : stopped ? '已停止，内容可插入' : '等待你的指令'}</span></div>
@@ -1092,6 +1404,30 @@ export function StudioPage() {
               )) : <div className="empty-state version-empty"><span className="empty-state__icon"><Icon name="trash" /></span><strong>回收站是空的</strong><p>删除章节后会先放在这里，恢复或彻底删除都由你决定。</p></div>}
             </div>
             <footer className="modal__foot"><span className="modal__hint">恢复后章节会回到原目录位置；彻底删除不可撤销。</span><div className="modal__foot-actions"><button className="btn btn--ghost" type="button" onClick={() => setTrashOpen(false)}>关闭</button></div></footer>
+          </div>
+        </div>
+      )}
+      {reviewVersions && (
+        <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setReviewVersions(null); }}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="章节版本">
+            <header className="modal__head">
+              <div><p className="modal__eyebrow">本章版本 · {reviewUnit?.title || ''}</p><h2>历史版本</h2></div>
+              <button className="icon-btn" type="button" onClick={() => setReviewVersions(null)}><Icon name="x" /></button>
+            </header>
+            <div className="trash-list">
+              {reviewVersions.length ? reviewVersions.map((version) => (
+                <article className="trash-item" key={version.id}>
+                  <div className="trash-item__body">
+                    <strong>{version.source || '版本'}{version.note ? ` · ${version.note}` : ''}</strong>
+                    <span>{formatDateTime(version.created_at || version.createdAt)} · {formatNumber(version.words || 0)} 字</span>
+                  </div>
+                  <div className="trash-item__actions">
+                    <button className="btn btn--tiny btn--primary" type="button" data-testid="chapter-version-restore" onClick={() => void restoreReviewVersion(version.id)}>回到此版本</button>
+                  </div>
+                </article>
+              )) : <div className="empty-state version-empty"><span className="empty-state__icon"><Icon name="clock" /></span><strong>这一章还没有历史版本</strong><p>AI 写作、重写或人工修改后会留下可回退的快照。</p></div>}
+            </div>
+            <footer className="modal__foot"><span className="modal__hint">恢复会写入新版本，不删除历史。</span><div className="modal__foot-actions"><button className="btn btn--ghost" type="button" onClick={() => setReviewVersions(null)}>关闭</button></div></footer>
           </div>
         </div>
       )}

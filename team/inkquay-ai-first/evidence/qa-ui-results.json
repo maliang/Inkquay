@@ -1,0 +1,126 @@
+{
+  "ranAt": "2026-10-29T09:59:15.440Z",
+  "port": 8832,
+  "dataDir": "/var/folders/4b/_pvt88bx3lj50n60zdv_0pzr0000gn/T/qa-ui-SlJLAb",
+  "results": [
+    {
+      "id": "U0",
+      "title": "开屏 onboarding（真实点击）：选供应商 → 填 Key → 选模型 → 进入作品库",
+      "status": "passed",
+      "evidence": "进入作品库首屏"
+    },
+    {
+      "id": "U1",
+      "title": "无默认模型：预检拦截 + 点「创建并让 AI 企划」也不落空壳",
+      "status": "passed",
+      "evidence": "预检：⚠ 还不能让 AI 企划：还没有选择默认模型，请到设置中配置 可以先到设置里选一个默认模型，或者改为自己写。去设置里选模…；作品数 0 未变"
+    },
+    {
+      "id": "U2",
+      "title": "慢供应商：创建后 5s 内进企划页，等待期进度秒数持续递增，取消 ≤2s 并给出删除出路",
+      "status": "passed",
+      "evidence": "进页 378ms；删除后作品 1→0；elapsed 0→2s（state=running，文案「正在生成设定… · 0/3 步 · 0 秒 取消」）；取消 53ms；取消后下一步「下一步 让 AI 生成设定 AI 会先给一版世界观、环境与人」；可删除且回到作品库"
+    },
+    {
+      "id": "U3",
+      "title": "失联供应商：结构化错误卡（人话）+ 重试入口，重试后仍是错误而不是假装成功",
+      "status": "passed",
+      "evidence": "错误码 NETWORK（重试后 NETWORK），文案「! 连不上本地服务 确认应用还在运行；网络恢复后重试即可，已经生成的进度都在本地。 阶段 p1 重试…」，重试入口可用，作品可删"
+    },
+    {
+      "id": "U4",
+      "title": "长篇 P1（真实点击）：AI 生成设定 → 编辑一个人物 → 给条目提意见重生成 → 确认",
+      "status": "passed",
+      "evidence": "人物编辑生效；条目级意见重生成后修订历史 2 条；P1 确认成功（确认前 blockers=0）"
+    },
+    {
+      "id": "U5",
+      "title": "长篇 P2（真实点击）：生成幕/节拍 → 单幕意见重生成 → 确认（复现 DEF-1）",
+      "status": "passed",
+      "evidence": "幕 3 / 节拍 9；单幕重生成后 P1=confirmed，P2 确认成功"
+    },
+    {
+      "id": "U6",
+      "title": "长篇 P3（真实点击）：章节计划、字数、分配预览→手改→应用（复现 DEF-4）、接受偏差、确认",
+      "status": "passed",
+      "evidence": "初始 100 行 → 改 5 行；预设后目标字数 2000/2000/2000/2000/2000；分配预览可取=true；手改后点应用保持 1507；合计「共 5 章 · 计划 9,507 字 · 目标 30.0 万字 · 偏差 -96.8% ⚠ 」；P3 确认成功"
+    },
+    {
+      "id": "U7",
+      "title": "长篇 P4（真实点击）：写作中暂停=写完本章再停（D4）、继续、立即停止、刷新后保持",
+      "status": "passed",
+      "evidence": "写作中文案「正在写作 已用 0 秒 0/5 章 · 0 字 已写 暂停 立即停止」；暂停受理 65ms（phase=pause-requested）；当前章写完 2421ms 后落定 paused，已写 1 章、无半截章；继续后 state=running 且无 4xx；刷新后章节行 5、已写 2→2、state=running；立即停止 97ms，停止后继续按钮 0 个"
+    },
+    {
+      "id": "U8",
+      "title": "长篇 P4（真实点击）：单章重写只改那一章 → 进入审阅队列通过/退回",
+      "status": "passed",
+      "evidence": "单章重写改了目标章 1 篇、其他章 0 篇；审阅队列「2 章待审」；通过后 approved=1；退回后 changes_requested=1"
+    },
+    {
+      "id": "U9",
+      "title": "短篇（真实点击）：全程无章节行、节拍计划、逐节拍写作，审阅入口要真的能用",
+      "status": "passed",
+      "evidence": "短篇：P1/P3/P4 chapter-row 全为 0；P3 节拍行 0、计划行 8；P4 节拍行 8；审阅队列「8 节拍待审」"
+    },
+    {
+      "id": "U10",
+      "title": "旧项目（真实点击）：升级横幅 → 升级 → 正文仍可读 → 回退",
+      "status": "passed",
+      "evidence": "旧项目横幅「这是升级前的旧作品 可以继续在原编辑器里写；也可以升级到 AI 流水线，正文、设…」；保存状态「已保存」；升级后（未刷新）横幅 data-state=done；刷新后「已升级到 AI 流水线 正文、设定和版本都保留着；需要时可以…」；升级/回退后正文都能读"
+    },
+    {
+      "id": "U11",
+      "title": "断网：写作中拔网线 → 有离线提示、不白屏；恢复后能继续刷新",
+      "status": "passed",
+      "evidence": "断网 4s 显示「· 与后台失去联系」；页面仍有内容（474 字）；恢复后提示消失"
+    },
+    {
+      "id": "U13",
+      "title": "已确认阶段遇到上游变更：横幅出现、三种处理都能点（t14 缺陷的回归）",
+      "status": "passed",
+      "evidence": "横幅「上游已变更，建议复核后再确认 设定已被编辑。本阶段内容没有自动改动，你可以选择怎么处理；已经被确认的内容仍然按确认时的那一版保留。」；上游未确认时「按上游重排」禁用并写明原因、确认后恢复可用；忽略保留 stale、复核保留清 stale 且 P2 仍 confirmed、按上游重排起了 regen-stage/p2"
+    },
+    {
+      "id": "U12",
+      "title": "全程 Console / Network：无未捕获异常，4xx/5xx 逐条有据",
+      "status": "passed",
+      "evidence": "页面级未捕获异常 0 条（另有 3 条是我自己 setOffline 触发的网络失败日志，不算产品异常）；HTTP 请求 395 条，>=400 3 条，明细见 httpErrorDetail"
+    }
+  ],
+  "defects": [],
+  "consoleErrors": [
+    "console: Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+    "console: Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+    "console: Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+  ],
+  "httpErrors": [
+    "404 GET /api/projects/p_mvtddm0a_su0tx3/pipeline",
+    "404 GET /api/projects/p_mvtddp4w_4xhjds/pipeline",
+    "400 POST /api/projects/p_mvtddtk7_4xc5ad/stages/p3/units/allocate/apply"
+  ],
+  "httpErrorDetail": [
+    {
+      "at": 6485,
+      "status": 404,
+      "method": "GET",
+      "path": "/api/projects/p_mvtddm0a_su0tx3/pipeline",
+      "page": "http://127.0.0.1:8832/project/p_mvtddm0a_su0tx3/pipeline"
+    },
+    {
+      "at": 12301,
+      "status": 404,
+      "method": "GET",
+      "path": "/api/projects/p_mvtddp4w_4xhjds/pipeline",
+      "page": "http://127.0.0.1:8832/project/p_mvtddp4w_4xhjds/pipeline?stage=p1"
+    },
+    {
+      "at": 23986,
+      "status": 400,
+      "method": "POST",
+      "path": "/api/projects/p_mvtddtk7_4xc5ad/stages/p3/units/allocate/apply",
+      "page": "http://127.0.0.1:8832/project/p_mvtddtk7_4xc5ad/pipeline?stage=p3"
+    }
+  ],
+  "httpTotal": 395
+}

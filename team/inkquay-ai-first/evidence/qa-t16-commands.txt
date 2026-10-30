@@ -1,0 +1,44 @@
+### pnpm --dir software typecheck
+
+> inkquay-studio@0.1.0 typecheck /Users/maliang/Documents/develop/maliang/私家写手/software
+> tsc --noEmit
+
+EXIT=0
+
+### pnpm --dir software test (tail)
+PASS regenerating one p2 item keeps p1 confirmed and still allows p2 confirmation
+PASS allocation judges hand-edited targets on the server and ignores client flags
+PASS an upstream edit marks the confirmed stage stale, and "keep" clears it without rolling back
+PASS pipeline stage data survives restart and continues from the current stage
+PASS restart after empty library
+
+All API tests passed.
+EXIT=0
+
+### node software/scripts/qa-e2e-api.mjs (tail)
+
+--- 汇总 ---
+通过 30 / 30，失败 0，缺陷 0
+结果写入 /Users/maliang/Documents/develop/maliang/私家写手/team/inkquay-ai-first/evidence/qa-api-results.json
+服务端日志 /Users/maliang/Documents/develop/maliang/私家写手/team/inkquay-ai-first/evidence/qa-api-server.log
+API_EXIT=0
+
+### node software/scripts/qa-e2e-ui.mjs (tail)
+HTTP >=400（3）：
+  404 GET /api/projects/p_mvszew1z_gm7juc/pipeline
+  404 GET /api/projects/p_mvszez6n_zg7ukg/pipeline
+  422 POST /api/projects/p_mvszf3li_iz2pt1/stages/p3/units/allocate/apply
+结果写入 /Users/maliang/Documents/develop/maliang/私家写手/team/inkquay-ai-first/evidence/qa-ui-results.json
+UI_EXIT=0
+
+### pnpm --dir software test:ui (tail)
+PASS t10 D-2 screenplay scene analysis marked as schematic
+PASS t10 D-3 codex wording stays local-only
+PASS t10 studio composer wording
+PASS t10 delete confirm closes on Esc without DELETE
+HTTP >=400 during run:
+  404 GET /api/projects/p_mvszmwqr_6t2sdd/pipeline
+  404 GET /api/projects/p_mvszmzno_rq4if4/pipeline
+
+All UI tests passed.
+TESTUI_EXIT=0

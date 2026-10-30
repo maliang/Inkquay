@@ -6,6 +6,7 @@ import { AppProvider } from './context/AppContext';
 import { ToastProvider } from './components/Toast';
 import './styles/prototype.css';
 import './styles/app.css';
+import './styles/pipeline.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Icon } from './Icon';
 
-export function Rail({ active, projectId }: { active: 'library' | 'studio' | 'outline' | 'codex' | 'screenplay'; projectId?: string | null }) {
+export function Rail({ active, projectId }: { active: 'library' | 'pipeline' | 'studio' | 'outline' | 'codex' | 'screenplay'; projectId?: string | null }) {
   const { lastProjectId, projects, settings } = useApp();
   const name = settings.profile?.name || '写作者';
   const location = useLocation();
@@ -13,6 +13,7 @@ export function Rail({ active, projectId }: { active: 'library' | 'studio' | 'ou
     || pid;
   const sections = [
     { key: 'library', label: '作品库', icon: 'book', to: '/' },
+    { key: 'pipeline', label: '企划', icon: 'route', to: `/project/${writeId}/pipeline` },
     { key: 'studio', label: '写作台', icon: 'pen', to: `/project/${writeId}` },
     { key: 'outline', label: '大纲', icon: 'map', to: `/project/${pid}/outline`, needsProject: true },
     { key: 'codex', label: '设定', icon: 'users', to: `/project/${pid}/codex`, needsProject: true },

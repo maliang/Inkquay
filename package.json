@@ -16,7 +16,7 @@
     "desktop": "pnpm desktop:prepare && node scripts/launch-desktop.mjs",
     "desktop:pack": "pnpm desktop:prepare && electron-builder --mac dir",
     "desktop:dmg": "pnpm desktop:prepare && electron-builder --mac dmg",
-    "desktop:open": "open \"desktop/release/mac-arm64/私家写手.app\"",
+    "desktop:open": "open \"desktop/release/mac-arm64/Inkquay.app\"",
     "desktop:launch": "node scripts/launch-desktop.mjs",
     "desktop:test": "pnpm desktop:prepare && node scripts/desktop-test.mjs"
   },

@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import fs from 'node:fs';
-import { migrate } from './db.ts';
+import { db, migrate } from './db.ts';
 import { buildProjectDocx } from './docx.ts';
 import { generateProjectPlan } from './plan.ts';
 import {
@@ -53,6 +53,10 @@ import {
   updateShot,
 } from './repository.ts';
 import { streamAssistant } from './ai.ts';
+import { registerPipelineRoutes } from './pipeline/routes.ts';
+import { createPipelineProject } from './pipeline/create.ts';
+import { recoverInterruptedJobs, pump } from './pipeline/runner.ts';
+import { recoverInterruptedMigrations } from './pipeline/legacy.ts';
 import { fetchProviderModels } from './models.ts';
 import { decryptSecret } from './crypto.ts';
 import type { AiStreamRequest, AppSettings, ChapterPatch, ModelInfo, ProjectBundle } from '../shared/types.ts';
@@ -61,6 +65,9 @@ const app = express();
 const port = Number(process.env.PORT || 8787);
 
 migrate();
+recoverInterruptedMigrations();
+recoverInterruptedJobs();
+pump();
 
 app.use(express.json({ limit: '25mb' }));
 app.use((req, _res, next) => {
@@ -86,9 +93,27 @@ app.get('/api/projects', (_req, res) => {
   res.json({ projects: listProjects() });
 });
 
-app.post('/api/projects', (req, res) => {
-  const { title, type, genre, description, goalWords } = req.body || {};
+app.post('/api/projects', (req, res, next) => {
+  const { title, type, genre, description, goalWords, premise, targetWords, styleNotes, start } = req.body || {};
   if (!title?.trim()) return res.status(400).json({ error: '作品名不能为空' });
+  const wantsPipeline = start === 'pipeline' || start === true || req.body?.pipeline === true;
+  if (wantsPipeline) {
+    try {
+      const result = createPipelineProject({
+        title: String(title),
+        type: type || 'novel',
+        genre: genre || '',
+        premise: premise || description || '',
+        targetWords: Number(targetWords) || Number(goalWords) || undefined,
+        styleNotes: styleNotes || '',
+        start: true,
+        clientRequestId: req.get('Idempotency-Key') || undefined,
+      });
+      return res.status(result.replayed ? 200 : 201).json(result);
+    } catch (error) {
+      return next(error);
+    }
+  }
   const project = createProject({
     title: title.trim(),
     type: type || 'novel',
@@ -383,6 +408,41 @@ app.post('/api/providers/:id/models', async (req, res) => {
   }
 });
 
+
+/**
+ * 导出语料按作品类型取（F10）：
+ * 短篇流水线把正文放在 `stage_items(kind='beat_plan').body`，`chapters` 表里没有正文行，
+ * 所以必须先按 kind 取语料，否则短篇写完也导不出（旧实现只认 chapters，直接 400）。
+ */
+interface CorpusUnit {
+  id: string;
+  ordinal: number;
+  title: string;
+  body: string;
+}
+
+function shortUnitsOf(projectId: string): CorpusUnit[] {
+  const rows = db
+    .prepare("SELECT id, title, body, ordinal FROM stage_items WHERE project_id = ? AND stage_key = 'p3' AND kind = 'beat_plan' AND archived_at IS NULL ORDER BY ordinal ASC, id ASC")
+    .all(projectId) as Array<Record<string, unknown>>;
+  return rows.map((row, index) => ({
+    id: String(row.id),
+    ordinal: Number(row.ordinal ?? index),
+    title: String(row.title || ''),
+    body: String(row.body || ''),
+  }));
+}
+
+function shortMarkdown(project: { title: string; genre?: string | null; description?: string | null }, units: CorpusUnit[]): string {
+  const lines: string[] = [`# ${project.title}`, ''];
+  if (project.genre) lines.push(`> ${project.genre}`, '');
+  if (project.description) lines.push(project.description, '');
+  units.forEach((unit, index) => {
+    lines.push(`## 第${index + 1}节拍　${unit.title}`, '', unit.body, '');
+  });
+  return lines.join('\n');
+}
+
 app.get('/api/projects/:id/export.docx', async (req, res) => {
   const project = getProjectDetail(req.params.id);
   if (!project) return res.status(404).json({ error: '作品不存在' });
@@ -390,10 +450,32 @@ app.get('/api/projects/:id/export.docx', async (req, res) => {
   const chapter = chapterId ? project.chapters.find((item) => item.id === chapterId) : null;
   if (chapterId && !chapter && project.type !== 'screenplay') return res.status(404).json({ error: '章节不存在' });
   const scoped = chapter && project.type !== 'screenplay' ? { ...project, chapters: [chapter] } : project;
-  const hasBody = scoped.chapters.some((item) => item.content.trim()) || scoped.scenes.some((scene) => scene.content.trim());
-  if (!hasBody) return res.status(400).json({ error: chapter ? '这一章还没有可导出的正文' : '这本还没有可导出的正文' });
-  const buffer = await buildProjectDocx(scoped);
-  const name = chapter && project.type !== 'screenplay' ? `${project.title}-${chapter.number}${chapter.title}` : project.title;
+  const shortUnits = project.type === 'short' ? shortUnitsOf(project.id) : [];
+  const shortUnit = chapterId && project.type === 'short' ? shortUnits.find((unit) => unit.id === chapterId) || null : null;
+  if (chapterId && !chapter && !shortUnit && project.type !== 'screenplay') return res.status(404).json({ error: '章节不存在' });
+  const unitsForDocx = shortUnit ? [shortUnit] : shortUnits;
+  const hasBody =
+    scoped.chapters.some((item) => item.content.trim()) ||
+    scoped.scenes.some((scene) => scene.content.trim()) ||
+    unitsForDocx.some((unit) => unit.body.trim());
+  if (!hasBody) return res.status(400).json({ error: chapter || shortUnit ? '这一章还没有可导出的正文' : '这本还没有可导出的正文' });
+  // 短篇用节拍语料拼一个等价 chapters 视图交给 docx 渲染器，章节/节拍共用同一套排版。
+  const docxProject = shortUnits.length
+    ? ({
+        ...project,
+        chapters: unitsForDocx.map((unit, index) => ({
+          ...(project.chapters[0] || {}),
+          id: unit.id,
+          sortOrder: index,
+          number: `第${index + 1}节拍`,
+          title: unit.title,
+          content: unit.body,
+          words: unit.body.length,
+        })),
+      } as unknown as typeof project)
+    : scoped;
+  const buffer = await buildProjectDocx(docxProject);
+  const name = chapter && project.type !== 'screenplay' ? `${project.title}-${chapter.number}${chapter.title}` : shortUnit ? `${project.title}-第${shortUnit.ordinal + 1}节拍` : project.title;
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`${name}.docx`)}`);
   res.send(buffer);
@@ -425,11 +507,20 @@ app.get('/api/projects/:id/export', (req, res) => {
   const chapter = chapterId ? project.chapters.find((item) => item.id === chapterId) : null;
   if (chapterId && !chapter && project.type !== 'screenplay') return res.status(404).json({ error: '章节不存在' });
   const scoped = chapter && project.type !== 'screenplay' ? { ...project, chapters: [chapter] } : project;
-  const hasBody = scoped.chapters.some((item) => item.content.trim()) || scoped.scenes.some((scene) => scene.content.trim());
-  if (!hasBody) return res.status(400).json({ error: chapter ? '这一章还没有可导出的正文' : '这本还没有可导出的正文' });
-  const markdown = exportProjectMarkdown(req.params.id, chapterId || null);
+  const shortUnits = project.type === 'short' ? shortUnitsOf(project.id) : [];
+  const shortUnit = chapterId && project.type === 'short' ? shortUnits.find((unit) => unit.id === chapterId) || null : null;
+  if (chapterId && !chapter && !shortUnit && project.type !== 'screenplay') return res.status(404).json({ error: '章节不存在' });
+  const unitsForMarkdown = shortUnit ? [shortUnit] : shortUnits;
+  const hasBody =
+    scoped.chapters.some((item) => item.content.trim()) ||
+    scoped.scenes.some((scene) => scene.content.trim()) ||
+    unitsForMarkdown.some((unit) => unit.body.trim());
+  if (!hasBody) return res.status(400).json({ error: chapter || shortUnit ? '这一章还没有可导出的正文' : '这本还没有可导出的正文' });
+  const markdown = shortUnits.length
+    ? shortMarkdown(project, unitsForMarkdown)
+    : exportProjectMarkdown(req.params.id, chapterId || null);
   if (!markdown) return res.status(404).json({ error: '作品不存在' });
-  const name = chapter && project.type !== 'screenplay' ? `${project.title}-${chapter.number}${chapter.title}` : project.title;
+  const name = chapter && project.type !== 'screenplay' ? `${project.title}-${chapter.number}${chapter.title}` : shortUnit ? `${project.title}-第${shortUnit.ordinal + 1}节拍` : project.title;
   const safeName = name.replace(/[\\/:*?"<>|]/g, '_');
   res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`${safeName}.md`)}`);
@@ -475,6 +566,8 @@ app.post('/api/ai/stream', async (req, res) => {
     res.off('close', onClose);
   }
 });
+
+registerPipelineRoutes(app);
 
 const dist = process.env.PW_STATIC_DIR ? path.resolve(process.env.PW_STATIC_DIR) : path.resolve(process.cwd(), 'dist');
 if (fs.existsSync(dist)) {

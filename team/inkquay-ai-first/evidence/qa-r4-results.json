@@ -1,0 +1,158 @@
+{
+  "_meta": {
+    "task": "t18 verification r4",
+    "port": 8841,
+    "dataDir": "/var/folders/4b/_pvt88bx3lj50n60zdv_0pzr0000gn/T/qa-r4-JS3rIX",
+    "startedAt": "2026-10-29T04:38:07.522Z",
+    "durationMs": 42277
+  },
+  "passed": 19,
+  "failed": 0,
+  "results": [
+    {
+      "id": "A1",
+      "title": "准备：显式选 mock 模型，建长篇流水线作品（生成 P1）",
+      "status": "passed",
+      "evidence": "作品 p_mvt1yv88_sfng69，P1 条目 6 条（{\"world\":1,\"character\":3,\"env\":2}） (22ms)",
+      "at": 522
+    },
+    {
+      "id": "A2",
+      "title": "P1 新增条目（DEF-15）：人物/环境可加，世界观唯一，未知 kind 被拒",
+      "status": "passed",
+      "evidence": "新增人物 chr_mvt1yv8v_yult6j、环境 itm_mvt1yv8y_y8fskn；重复世界观 400「世界观只能有一条，直接编辑现有的那条」；未知 kind 400 (14ms)",
+      "at": 536
+    },
+    {
+      "id": "A3",
+      "title": "P1 删除（DEF-15）：普通可删、锁定 409 ITEM_LOCKED、解锁后可删",
+      "status": "passed",
+      "evidence": "锁定删除 409 ITEM_LOCKED「这一条已锁定，先解锁再删」；解锁后删除 200（deleted=1，含被删条目）；环境也可删 (8ms)",
+      "at": 544
+    },
+    {
+      "id": "A4",
+      "title": "P1 人物排序（DEF-15）：倒序生效；少一条/外来 id/未知 block/p4 全部被拒",
+      "status": "passed",
+      "evidence": "倒序生效（3 条）；少一条 400「排序要提交人物列表的全部条目（当前 3 条）」；外来 id 400；block=world 400；p4 400「正文按章节顺序排列，不支持单独排序」 (11ms)",
+      "at": 555
+    },
+    {
+      "id": "A5",
+      "title": "P2 新增条目（DEF-15）：幕/节拍可加，节拍必须挂幕",
+      "status": "passed",
+      "evidence": "幕 3 条；新增幕 act_mvt1yvac_hpn880、节拍 beat_mvt1yvae_bi3yhn（挂幕）；无父节拍 400「节拍必须挂在某一幕下」 (28ms)",
+      "at": 583
+    },
+    {
+      "id": "A6",
+      "title": "P2 排序（DEF-15）：幕倒序与幕内节拍倒序生效；非法排序被拒",
+      "status": "passed",
+      "evidence": "幕倒序生效（4 条）；幕内节拍排序 200；少一条 400「排序要提交幕列表的全部条目（当前 4 条）」；缺 block 400；不存在的幕 404 (15ms)",
+      "at": 598
+    },
+    {
+      "id": "A7",
+      "title": "P2 删除（DEF-15）：删幕级联删节拍",
+      "status": "passed",
+      "evidence": "删幕 200，级联删 2 条（幕 + 节拍） (4ms)",
+      "at": 602
+    },
+    {
+      "id": "A8",
+      "title": "P3 排序（DEF-15）：章节计划倒序生效；少一条被拒；章节不能从条目接口删",
+      "status": "passed",
+      "evidence": "章节 10 条倒序生效；少一条 400「排序要提交章节计划的全部条目（当前 10 条）」；章节删除被拒 400「章/节拍的增删请用「章节数」或「节拍计划」，这里只能改与排序」 (21ms)",
+      "at": 624
+    },
+    {
+      "id": "A9",
+      "title": "排序不动正文：给两章写正文后再排一次，正文逐字节不变",
+      "status": "passed",
+      "evidence": "两章正文（190/190 字符）排序后逐字节一致；章节数 10 (19ms)",
+      "at": 644
+    },
+    {
+      "id": "A10",
+      "title": "重启（SIGKILL）后条目与章节顺序保持",
+      "status": "passed",
+      "evidence": "SIGKILL 重启后人物 3 条、章节 10 条顺序与重启前逐项一致 (946ms)",
+      "at": 1590
+    },
+    {
+      "id": "A11",
+      "title": "旧作品：迁移后条目增删排序，正文与版本不变",
+      "status": "passed",
+      "evidence": "迁移 done；正文仍是「QA-R4 旧正文：这一行必须在…」（29 字符）；版本 2 → 2 且迁移后能回退到第一稿再回终稿（逐字节一致）；旧幕 3 条全部可读（第一幕 / 第二幕 / 第三幕）；新增/排序/删除条目均成功 (61ms)",
+      "at": 1651
+    },
+    {
+      "id": "A12",
+      "title": "短篇等价：节拍组/节拍可增可排，P3 节拍计划可排序，且全程没有 chapters 行",
+      "status": "passed",
+      "evidence": "短篇 p_mvt1yw46_9yo2vs：节拍组 3 条倒序生效、新增节拍组+节拍成功、act 被拒 400；节拍计划 8 条倒序生效；chapters 行 0 (92ms)",
+      "at": 1743
+    },
+    {
+      "id": "A13",
+      "title": "排序后的章号一致性（观察项）：计划表序号连续，但 chapters.number 不跟着重排",
+      "status": "passed",
+      "evidence": "重排后 chapters 顺序的 number 为 第10章 → 第9章 → 第8章 → 第7章 → 第6章 …（连续=false）；计划表序号仍按 index 渲染 1..10 (9ms)",
+      "at": 1752
+    },
+    {
+      "id": "U1",
+      "title": "DEF-13：编辑 P1 → P2 已确认却被标 stale → 复核并保留 → 再编辑 P1 → 横幅重现",
+      "status": "passed",
+      "evidence": "第一次编辑 → p1=review、p2=confirmed+stale(p1:edited)；keep 后 stale 清空；二次编辑 → p2 再次 stale 且 P2 横幅重现（banner=data-state=stale） (3861ms)",
+      "at": 5860
+    },
+    {
+      "id": "U2",
+      "title": "DEF-14：「按上游重排」在上游未确认时禁用并写明原因，确认上游后恢复且真的起重排 job",
+      "status": "passed",
+      "evidence": "上游 review 时 button.disabled=true、aria-describedby 指向提示、提示文案「先确认上一阶段（设定）」；确认 P1 后恢复可点，点击起 p2 重排 job 且无 409、横幅消失 (31898ms)",
+      "at": 37758
+    },
+    {
+      "id": "U3",
+      "title": "DEF-15 UI：P1 新增人物 → ↑↓ 排序 → 刷新保持 → 删除（真实点击）",
+      "status": "passed",
+      "evidence": "新增人物 chr_mvt1zocr_zy3765 → 上移后序号 3/4 → 刷新后 DOM 顺序与服务端一致 → 删除（confirm-ok）后条目消失 (1717ms)",
+      "at": 39475
+    },
+    {
+      "id": "U4",
+      "title": "DEF-15 UI：P2 新增一幕 + 新增节拍 → 刷新保持（真实点击）",
+      "status": "passed",
+      "evidence": "新增幕 act_mvt1zpob_drmg1c、其下节拍 beat_mvt1zq34_25aqs0；刷新后两张卡仍在（act=1, beat=1） (1661ms)",
+      "at": 41136
+    },
+    {
+      "id": "U5",
+      "title": "DEF-15 UI：P3 章节计划 ↑↓ 排序 → 刷新保持（真实点击）",
+      "status": "passed",
+      "evidence": "章节计划 10 条：把第 2 条上移成第 1 条（服务端顺序已变 ✓），刷新后顺序保持（DOM 读到 10 个 data-id） (1106ms)",
+      "at": 42242
+    },
+    {
+      "id": "U6",
+      "title": "Console / pageerror 汇总：不得有未捕获异常",
+      "status": "passed",
+      "evidence": "pageerror/console 异常 0 条；HTTP≥400 共 0 条，均为「上游未确认时点重排的 409」「删作品瞬间在飞的轮询 404」这类预期项 (0ms)",
+      "at": 42242
+    }
+  ],
+  "defects": [
+    {
+      "id": "DEF-16",
+      "severity": "low",
+      "title": "章节重排后 chapters.number 不重排：写作台章号与计划表序号对不上",
+      "file": "software/src/server/pipeline/actions.ts:710（reorderUnits 只写 sort_order/updated_at）；显示处 software/src/client/pages/StudioPage.tsx:1036、:1151、:1383",
+      "detail": "P3 章节计划倒序后 /api/projects/:id 的 chapters 顺序变成新的，但 number 仍是旧值：第10章 → 第9章 → 第8章 → 第7章 → 第6章 …（重排前是 第1章 → 第2章 → 第3章 …）。P3 计划表按 index 渲染 1..N，写作台左侧章号与正文抬头仍用 chapters.number ⇒ 同一本书两处编号不一致。",
+      "repro": "1) 长篇生成 P3（10 章）；2) POST /stages/p3/units/reorder 倒序；3) GET /api/projects/:id 看 chapters[].number 仍是第1章…第10章原值；4) 打开写作台看左侧章号与正文抬头"
+    }
+  ],
+  "consoleErrors": [],
+  "httpErrors": []
+}

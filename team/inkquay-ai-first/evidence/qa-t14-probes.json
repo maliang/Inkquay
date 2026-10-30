@@ -1,0 +1,374 @@
+{
+ "probe1-r2-semantics": [
+  {
+   "name": "S0 基准确认状态",
+   "value": {
+    "p1": {
+     "status": "confirmed",
+     "locked": false,
+     "counts": {
+      "items": 6,
+      "locked": 0
+     },
+     "updatedAt": "2026-10-29T02:48:19.992Z",
+     "staleReason": null
+    },
+    "p2": {
+     "status": "confirmed",
+     "locked": false,
+     "counts": {
+      "items": 12,
+      "locked": 0
+     },
+     "updatedAt": "2026-10-29T02:48:20.018Z",
+     "staleReason": null
+    },
+    "p3": {
+     "status": "empty",
+     "locked": false,
+     "counts": {
+      "items": 0,
+      "locked": 0,
+      "units": 0,
+      "unitsDone": 0
+     },
+     "updatedAt": "2026-10-29T02:48:19.992Z",
+     "staleReason": null
+    },
+    "p4": {
+     "status": "empty",
+     "locked": false,
+     "counts": {
+      "items": 0,
+      "locked": 0,
+      "words": 0,
+      "units": 0,
+      "unitsDone": 0
+     },
+     "updatedAt": "2026-10-29T02:48:19.992Z",
+     "staleReason": null
+    }
+   }
+  },
+  {
+   "name": "A 已确认 P2 单条 AI 重生成后",
+   "value": {
+    "p1": "confirmed",
+    "p2": "review",
+    "p3": "empty",
+    "p2_confirmed_revision_id": null,
+    "p2_stale": null,
+    "p3_stale": null,
+    "newRevisions": [
+     {
+      "source": "ai_feedback",
+      "targetId": "act_mvsy1nvk_fx8pi4"
+     }
+    ],
+    "nextStep": {
+     "kind": "review-p2",
+     "label": "审核故事大纲",
+     "stage": "p2"
+    },
+    "expectsByR2": "p2 应为 review（内容已变更需重新确认），p3 应 stale"
+   }
+  },
+  {
+   "name": "P1 条目 kinds",
+   "value": [
+    {
+     "id": "itm_mvsy1nuz_kjf1e1",
+     "kind": "world",
+     "title": "QA 探针·已确认阶段再生成所处时代与主要地点：一座正在扩建的沿海城市，旧城区的"
+    },
+    {
+     "id": "chr_mvsy1nv3_dbhkkc",
+     "kind": "character",
+     "title": "沈砚"
+    },
+    {
+     "id": "itm_mvsy1nv1_mwek8g",
+     "kind": "env",
+     "title": "旧城印刷厂"
+    },
+    {
+     "id": "chr_mvsy1nv4_k7kt76",
+     "kind": "character",
+     "title": "林见夏"
+    },
+    {
+     "id": "itm_mvsy1nv2_7zpe9s",
+     "kind": "env",
+     "title": "潮汐码头"
+    },
+    {
+     "id": "chr_mvsy1nv4_lr3v77",
+     "kind": "character",
+     "title": "周渡"
+    }
+   ]
+  },
+  {
+   "name": "B 已确认 P1 单条 AI 重生成后",
+   "value": {
+    "p1": "review",
+    "p2": "review",
+    "p1_confirmed_revision_id": null,
+    "nextStep": {
+     "kind": "review-p1",
+     "label": "审阅并确认设定",
+     "stage": "p1"
+    },
+    "expectsByR2": "p1 应为 review（SPEC.md:363 / ARCHITECTURE.md:344）"
+   }
+  },
+  {
+   "name": "B2 重生成后再次确认 P2",
+   "value": {
+    "status": 409,
+    "code": "STAGE_LOCKED",
+    "message": "请先确认p1阶段"
+   }
+  },
+  {
+   "name": "C 人工编辑已确认 P1 条目后",
+   "value": {
+    "patchStatus": 200,
+    "patchData": "ok",
+    "p1_before": "review",
+    "p1_after": "review",
+    "p2_after": "review",
+    "expectsByR2": "p1 应为 review"
+   }
+  }
+ ],
+ "probe2-inv1": [
+  {
+   "name": "S0 确认后的状态",
+   "value": {
+    "p1": "confirmed",
+    "p2": "confirmed",
+    "p3": "confirmed"
+   }
+  },
+  {
+   "name": "A 上游 P1 全量重生成后",
+   "value": {
+    "p1": "review",
+    "p2": {
+     "status": "confirmed",
+     "staleReason": "p1:regenerated"
+    },
+    "p3": {
+     "status": "confirmed",
+     "staleReason": "p1:regenerated"
+    },
+    "p2_items_changed": false,
+    "p3_units_changed": false,
+    "nextStep": {
+     "kind": "review-p1",
+     "label": "审阅并确认设定",
+     "stage": "p1"
+    },
+    "expects": "p1=review；p2/p3 内容不得改变（INV-1），且应 stale"
+   }
+  },
+  {
+   "name": "B 重新确认 P1 后再确认 P2（stale 未处理）",
+   "value": {
+    "p1": 200,
+    "p2": 200,
+    "code": null,
+    "message": null
+   }
+  }
+ ],
+ "probe3-stale-visibility-single": [
+  {
+   "name": "S0 上游重生成后的服务端状态",
+   "value": {
+    "p1": "review",
+    "p2": {
+     "status": "confirmed",
+     "staleReason": "p1:regenerated"
+    },
+    "p3": {
+     "status": "confirmed",
+     "staleReason": "p1:regenerated"
+    },
+    "nextStep": {
+     "kind": "review-p1",
+     "label": "审阅并确认设定",
+     "stage": "p1"
+    }
+   }
+  },
+  {
+   "name": "A 界面上「p2」视图（已确认 + stale）",
+   "value": {
+    "stageStatus": "confirmed",
+    "banners": [],
+    "staleTextVisible": false,
+    "staleBannerAnchorExists": false,
+    "confirmButton": {
+     "text": "已确认",
+     "disabled": false
+    },
+    "bodyHead": "作品库 企划 写作台 大纲 设定 剧本 设置 Q 企划进度 2/4 已确认 1 设定待确认 6 条设定 ✓ 故事大纲已确认 12 条大纲 ✓ 章节计划已确认 10 章 · 3.0 万字 4 逐章写作待生成 0/10 章 阶段按顺序解锁：上游确认后才能确认下一阶段，内容永远可以回来再改。 作品库/QA 探针·stale 可见性长篇 0 字 已写 写作台 大纲 阶段 2 · 故事大纲 故事大纲 把设定拆成可写的事件 整份重新生成 给 AI 提意见 修订历史 下一步 审阅并确认设定 改到满意再确认；确认之后才轮到故事大纲"
+   }
+  },
+  {
+   "name": "B 点「确认」后的服务端状态（p2）",
+   "value": {
+    "p2": {
+     "status": "confirmed",
+     "staleReason": "p1:regenerated"
+    },
+    "p3": {
+     "status": "confirmed",
+     "staleReason": "p1:regenerated"
+    }
+   }
+  }
+ ],
+ "probe4-stale-visibility-compare": [
+  {
+   "name": "S1 服务端（p2 未确认，上游已变）",
+   "value": {
+    "p2": {
+     "status": "review",
+     "staleReason": "p1:regenerated"
+    }
+   }
+  },
+  {
+   "name": "A 界面 p2 视图（review + stale）",
+   "value": {
+    "stageStatus": "review",
+    "banners": [
+     {
+      "state": "stale",
+      "text": "上游已变更p1:regenerated。本阶段内容没有自动改动，你可以选择怎么处理。复核并保留按上游重排忽略",
+      "buttons": [
+       "复核并保留",
+       "按上游重排",
+       "忽略"
+      ]
+     }
+    ],
+    "staleTextVisible": true,
+    "stageStaleBannerAnchor": false,
+    "buttons": [
+     "Q",
+     "1设定待确认6 条设定",
+     "2故事大纲待确认12 条大纲",
+     "3章节计划待生成0 章 · 0 字",
+     "4逐章写作待生成章还没开始",
+     "整份重新生成",
+     "给 AI 提意见",
+     "删除这个作品",
+     "修订历史",
+     "复核并保留",
+     "按上游重排",
+     "忽略",
+     "审阅并确认设定",
+     "重生成这一幕",
+     "幕意见",
+     "编辑",
+     "重生成",
+     "提意见"
+    ]
+   }
+  },
+  {
+   "name": "S2 确认链",
+   "value": {
+    "p1": "confirmed",
+    "p2": 200,
+    "p3": 200
+   }
+  },
+  {
+   "name": "S2 服务端（p2/p3 已确认，上游已变）",
+   "value": {
+    "p1": "review",
+    "p2": {
+     "status": "confirmed",
+     "staleReason": "p1:regenerated"
+    },
+    "p3": {
+     "status": "confirmed",
+     "staleReason": "p1:regenerated"
+    },
+    "nextStep": {
+     "kind": "review-p1",
+     "label": "审阅并确认设定",
+     "stage": "p1"
+    }
+   }
+  },
+  {
+   "name": "B 界面 p2 视图（confirmed + stale）",
+   "value": {
+    "stageStatus": "confirmed",
+    "banners": [],
+    "staleTextVisible": false,
+    "stageStaleBannerAnchor": false,
+    "buttons": [
+     "Q",
+     "1设定待确认6 条设定",
+     "✓故事大纲已确认12 条大纲",
+     "✓章节计划已确认10 章 · 3.0 万字",
+     "4逐章写作待生成0/10 章",
+     "整份重新生成",
+     "给 AI 提意见",
+     "修订历史",
+     "审阅并确认设定",
+     "重生成这一幕",
+     "幕意见",
+     "编辑",
+     "重生成",
+     "提意见",
+     "历史",
+     "锁定",
+     "编辑",
+     "重生成"
+    ]
+   }
+  },
+  {
+   "name": "C 界面 p3 视图（confirmed + stale）",
+   "value": {
+    "stageStatus": "confirmed",
+    "banners": [],
+    "staleTextVisible": false,
+    "stageStaleBannerAnchor": false,
+    "buttons": [
+     "Q",
+     "1设定待确认6 条设定",
+     "✓故事大纲已确认12 条大纲",
+     "✓章节计划已确认10 章 · 3.0 万字",
+     "4逐章写作待生成0/10 章",
+     "整份重新生成",
+     "给 AI 提意见",
+     "修订历史",
+     "审阅并确认设定",
+     "预览调整",
+     "快",
+     "标准",
+     "厚重",
+     "按目标字数分配",
+     "计划已确认",
+     "锁定",
+     "锁定",
+     "锁定"
+    ]
+   }
+  }
+ ],
+ "_meta": {
+  "task": "t14 verification-round-2",
+  "date": "2026-10-29",
+  "note": "一次性探针原始输出（探针脚本用后已删除），用于佐证 R2 语义、INV-1 与 DEF-10 的 stale 可见性对比"
+ }
+}

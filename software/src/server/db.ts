@@ -2,10 +2,12 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { seedDatabase } from './seed.ts';
+import { ensurePipelineSchema } from './pipeline/schema.ts';
 import { countWords, now, uid } from './utils.ts';
 
-const dataDir = process.env.PW_DATA_DIR ? path.resolve(process.env.PW_DATA_DIR) : path.resolve(process.cwd(), 'data');
+export const dataDir = process.env.PW_DATA_DIR ? path.resolve(process.env.PW_DATA_DIR) : path.resolve(process.cwd(), 'data');
 fs.mkdirSync(dataDir, { recursive: true });
+export const backupDir = path.join(dataDir, 'backups');
 export const dbPath = path.join(dataDir, 'studio.db');
 
 export const db = new DatabaseSync(dbPath);
@@ -13,7 +15,10 @@ db.exec('PRAGMA journal_mode = WAL;');
 db.exec('PRAGMA foreign_keys = ON;');
 
 export function migrate() {
-  db.exec(`
+  // 结构升级必须原子：半套表结构比旧结构更难恢复（MIGRATION §2.4）。
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.exec(`
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -178,6 +183,16 @@ export function migrate() {
   const chapterColumns = db.prepare('PRAGMA table_info(chapters)').all() as Array<{ name: string }>;
   if (!chapterColumns.some((column) => column.name === 'deleted_at')) {
     db.exec('ALTER TABLE chapters ADD COLUMN deleted_at TEXT');
+  }
+
+  // AI-first 流水线结构（7 张新表 + 补列 + 索引），幂等可重入。
+  ensurePipelineSchema(db);
+  db.exec('COMMIT');
+  } catch (error) {
+    try {
+      db.exec('ROLLBACK');
+    } catch {}
+    throw error;
   }
 
   // seedDatabase 现在是幂等的（INSERT OR IGNORE），每次启动都执行。

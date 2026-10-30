@@ -8,6 +8,8 @@
 
 第二轮体验修复（基线 `4a43f42`，已随 v0.1.11 发布）在此基础上只改行为与措辞，不动 schema：未配置模型不再静默回退到演示模型、删除作品改为书名闸门 + 影响清单、剧本不再落进章节写作台、设定页不再声称已进上下文、非写作台关窗不再空等 5 秒、保存供应商不再偷改默认模型。用户向说明见 [../docs/EXPERIENCE-FIXES-ROUND2.md](../docs/EXPERIENCE-FIXES-ROUND2.md)。
 
+AI 主导流水线（本轮，工作树未 commit）：把「新建并让 AI 企划」从「一次请求 + 界面静止」改成**后台任务 + 五阶段工作台**——设定（世界观 / 环境 / 人物）→ 故事大纲（幕 / 节拍）→ 章节计划（章数 / 功能 / 大纲 / 字数区间）→ 逐章写作 → 逐章审阅；短篇用同一套阶段，以「节拍」替代「章」；旧作品可预检 → 升级 → 回退。用户向说明见 [../docs/AI-FIRST-WORKFLOW.md](../docs/AI-FIRST-WORKFLOW.md)，团队侧记录见 `../team/inkquay-ai-first/`（SPEC / UX-SPEC / ARCHITECTURE / MIGRATION / INTEGRATION / SUMMARY）。
+
 > 根目录现在是全栈应用入口；早期静态原型归档在 `../prototype/`。本目录是实际软件工程。
 
 ## 快速开始
@@ -85,6 +87,19 @@ pnpm desktop:pack
 - 导出 Word `.docx`（`/api/projects/:id/export.docx`，同样支持 `chapterId`）；空作品/空章节返回中文错误
 - 项目 JSON 备份 / 导入（`/api/projects/:id/bundle`、`/api/projects/import`），含版本历史，不含 API Key
 
+### AI 流水线（v1）
+- 新建时勾「创建后让 AI 先做企划」：先做配置预检（`NO_DEFAULT_MODEL` / `NO_API_KEY` 直接拦下、**不创建作品**），通过后 `POST /api/projects` 带幂等键创建并立刻跳到 `/project/:id/pipeline`，企划在后台跑
+- 五个阶段按顺序解锁：P1 设定 → P2 故事大纲 → P3 章节计划 → P4 逐章写作；阶段状态 `empty / generating / review / confirmed / failed / skipped`，未确认上一阶段时下游动作返回 409 `STAGE_LOCKED`
+- P1 条目（世界观 / 环境 / 人物）与 P2 条目（幕 / 节拍）可编辑、重生成、提意见（作用域 `item | block | all`）、锁定、删除、排序，每条都有修订历史（来源：AI 初稿 / 按意见重做 / 整份重生成 / 你修改 / 回滚 / 迁移）
+- 覆盖保护：整阶段重生成若会动到手改或锁定的条目，先返回 422 `CONFIRM_BLOCKED` + `detail.requiresConfirm='overwrite'`，前端二次确认后才重发（P1 / P2 / P3 都生效）
+- P3 章节计划：章数（长篇 3–200、短篇 3–40 节拍）、每章功能 / 大纲 / 出场人物 / 字数区间（floor 300、ceiling 20000，默认 2500 / 3000 / 4000）、字数档预设、按目标字数分配（preview → apply）、总字数偏差超 25% 需显式接受；减章若会删掉已有正文的章 → `CONTENT_WOULD_BE_LOST`
+- P4 逐章写作：`writing/start|pause|stop|continue`，暂停＝写完当前章再停、停止＝立刻中断并丢弃当前章（不可 continue）；单章失败不打断整本，可单章重试/重写；每章必须人工审阅（通过 / 退回 / 人工通过 / 跳过）
+- 失败一律结构化：`lastError.code` ∈ `NO_DEFAULT_MODEL / NO_API_KEY / AUTH_FAILED / MODEL_NOT_FOUND / REASONING_UNSUPPORTED / RATE_LIMIT / PROVIDER_TIMEOUT / PROVIDER_ERROR / NETWORK / EMPTY_OUTPUT / INVALID_JSON / CONTENT_BLOCKED / QUOTA_EXCEEDED / CANCELLED / INTERRUPTED / STAGE_LOCKED / CONCURRENT_JOB / CONFIRM_BLOCKED …`，前端只按 `code` 渲染文案（`src/client/lib/pipeline/format.ts`），不解析后端 message
+- 取消 ≤5s 落到 `cancelled/user_cancel`，不写半截数据；进程被杀后启动时 `recoverInterruptedJobs()` 把 running 标 `interrupted`，重试从断点续跑（已写章节逐字节不变）
+- 旧作品：`GET /migration` + `POST /migrate/precheck|migrate|migrate/rollback`；预检不过返回 500 `MIGRATION_FAILED` 且旧作品照旧可打开；升级在单事务里只新增行、不改 `chapters.content`，九条校验对备份副本比对 size / hash / 计数；回退需确认，已有新内容时 422 `CONFIRM_BLOCKED`
+- 短篇走同一套阶段：P3 是节拍计划、P4 是逐节拍写作，界面词表统一经 `unitLabel()` 替换，短篇作品不产生章节行
+- 剧本 / 剧集不进流水线（`TYPE_NOT_SUPPORTED`），仍走剧本工作台；未升级的旧作品仍走原写作台与原「AI 企划」逐项审核
+
 ### AI 共笔
 - `POST /api/ai/stream` SSE 流式输出
 - 上下文自动注入：作品与写作偏好、故事梗概、当前章节标题与末 4000 字正文、主要人物前 8、大纲节拍前 12、最近 3 章；**伏笔与人物关系不自动注入**，需在共笔面板手动引用
@@ -131,20 +146,26 @@ pnpm desktop:pack
 software/
 ├── src/
 │   ├── client/              React 前端
-│   │   ├── pages/           作品库 / 写作台 / 大纲 / 设定 / 剧本 / 设置
-│   │   ├── components/      AppShell、Rail、Cover、编辑器、Toast
+│   │   ├── pages/           作品库 / 写作台 / 流水线工作台 / 大纲 / 设定 / 剧本 / 设置
+│   │   ├── components/      AppShell、Rail、Cover、编辑器、Toast；pipeline/ 下是五阶段视图
+│   │   ├── hooks/           usePipeline（轮询 GET /pipeline 快照）
+│   │   ├── lib/pipeline/    api（38 条流水线路由）/ http / format（文案与错误码）/ guards
 │   │   ├── context/         App 数据与设置上下文
 │   │   ├── api.ts           REST + SSE 客户端
 │   │   ├── theme.ts         主题 / 强调色应用
-│   │   └── styles/          原型设计系统 + 应用补丁
+│   │   └── styles/          原型设计系统 + 应用补丁 + pipeline.css
 │   ├── server/              Express API
-│   │   ├── index.ts         路由
-│   │   ├── repository.ts    业务查询
+│   │   ├── index.ts         路由（旧端点 + 挂载流水线路由）
+│   │   ├── pipeline/        流水线：schema / store / steps / runner / snapshot / actions / create / routes / legacy
+│   │   ├── provider/call.ts 统一模型调用（重试、超时、错误分类、推理能力校验）
+│   │   ├── repository.ts    业务查询（旧编辑器仍用它）
 │   │   ├── ai.ts            AI 适配与流式响应
 │   │   ├── crypto.ts        API Key 加密
-│   │   ├── db.ts            schema / migration
+│   │   ├── db.ts            schema / migration（含 ensurePipelineSchema）
 │   │   └── seed.ts          供应商与默认设置（无演示作品）
-│   └── shared/types.ts      前后端共享类型
+│   └── shared/
+│       ├── types.ts         前后端共享类型
+│       └── pipeline.ts      流水线契约唯一来源（阶段 / 状态 / 错误码 / 字数与章数上下限）
 ├── data/                    SQLite 与本地密钥（运行时生成，不入库）
 ├── public/icons.svg         原型图标 sprite
 └── README.md
@@ -170,6 +191,10 @@ pnpm test:ui    # 浏览器 E2E：构建后用独立 SQLite 启动生产服务
 API 测试覆盖：bootstrap、强制 onboarding、创建/删除作品、章节保存与总字数回算、版本快照/回退、大纲场景创建/编辑/排序/删除、人物 CRUD、伏笔、剧本场次、分镜生成/编辑、设置持久化、供应商 Key 加密、AI SSE / 停止保留半截 / 重新生成、Markdown/Word 导出、空导出拦截、项目 JSON 备份导入、章节回收站、删光作品后重启不重复 seed。第二轮新增：剧本 Markdown/Word 导出与空剧本拦截（T1）、剧本项目包往返保留场次 / 分镜 / heading（T2）、未配置模型与各类失效供应商的拒绝路径且零副作用（T5）。
 
 UI E2E 覆盖：首次引导、作品库、写作台自动保存刷新恢复、AI 企划逐项确认、版本对比/回退、AI 流式生成 / 重新生成 / 插入正文、选中文本改写替换、个人资料、主题刷新持久化、大纲编辑与拖拽、人物编辑、剧本编辑、分镜编辑、作品设置。第二轮新增：剧本路由与书架计数 / 导出范围复位、设定页文案、删除作品的书名闸门与影响清单、供应商保存保持默认模型、未配置模型的提示。
+
+AI 流水线补充（当前 `pnpm test` 48 组、`pnpm test:ui` 47 组）：配置门禁（无默认模型 / 无 Key → 拒绝且不留空壳）、P1 条目增删改与按意见重生成、P2 幕与节拍、P3 章数与字数区间两步分配、P4 连续写作 + 暂停 / 停止 / 继续 + 逐章审阅、短篇节拍路径（章节行必须为 0）、旧作品迁移（预检 / 可重入 / 覆盖确认 / 失败回滚 / 回退）、刷新与 SIGKILL 后从断点续写、创建幂等。另有黑盒验收脚本 `node scripts/qa-e2e-api.mjs`（30 条）与 `node scripts/qa-e2e-ui.mjs`（14 条），都用临时 `PW_DATA_DIR` 与独立端口，不碰本地数据。
+
+跑测试前建议先 `pkill -f "src/server/index.ts"`，避免上一轮的残留服务占着端口。
 
 ## API 摘要
 
@@ -206,6 +231,27 @@ POST   /api/providers/:id/test
 POST   /api/ai/stream            (SSE)
 ```
 
+流水线路由另有一组（共 38 条，全部由 `src/client/lib/pipeline/api.ts` 消费，契约见 `src/shared/pipeline.ts`），按用途分组列前缀：
+
+```text
+GET    /api/projects/:id/pipeline                        # 一次拿到阶段 / 条目 / 单元 / 任务 / 审阅 / nextStep
+POST   /api/projects                                     # 带 Idempotency-Key，pipeline 项目创建后立即返回 id
+POST   /api/projects/:id/pipeline/start                  # 启动作业（阶段由服务端判定）
+POST   /api/projects/:id/pipeline/stages/:stage/confirm  # 确认阶段（未满足门槛 → 409 CONFIRM_BLOCKED + blockers）
+POST   /api/projects/:id/pipeline/stages/:stage/skip     # 仅 P1 允许
+POST   /api/projects/:id/pipeline/stages/:stage/regenerate
+POST   /api/projects/:id/pipeline/stages/:stage/feedback # 按整体意见重做（不带 scope 且会覆盖手改 → 422 requiresConfirm）
+POST   /api/projects/:id/pipeline/items/:itemId          # 条目编辑 / 锁定 / 重生成
+POST   /api/projects/:id/pipeline/stages/p3/count        # 章节（节拍）数与字数区间
+POST   /api/projects/:id/pipeline/stages/p3/units/allocate/preview | allocate/apply
+POST   /api/projects/:id/pipeline/writing/start|pause|stop|continue
+POST   /api/projects/:id/pipeline/units/:unitId/rewrite|restore
+POST   /api/chapters/:id/review                          # 逐章审阅（长篇写 chapters，短篇写节拍条目）
+POST   /api/jobs/:jobId/cancel
+GET    /api/projects/:id/migration
+POST   /api/projects/:id/migrate/precheck | migrate | migrate/rollback
+```
+
 ## 已知边界 / 下一阶段
 
 - 大纲支持上移 / 下移 / 拖拽排序 / 删除；跨幕拖拽暂未开放
@@ -220,6 +266,18 @@ POST   /api/ai/stream            (SSE)
 - 大纲页张力曲线 / 人物弧光、剧本页「本场分析」仍为示意数据（第二轮正在加「示意」标注，三幕卡改为真实 `acts`；实现已在工作区，随本轮一起复验）
 - 设置页默认模型下拉在未配置时视觉上落在第一项；剧本作品卡仍显示「0 字」
 - 本地服务异常退出（`server-exited`）时窗口无提示
+
+AI 流水线的已知边界（v1）：
+
+- 只支持长篇与短篇；剧本 / 剧集返回 `TYPE_NOT_SUPPORTED`，仍走剧本工作台
+- 节拍只能在同一幕内重排，跨幕移动未做（前端给降级提示）
+- 章节行内「立即写本章」按钮没跟「章节计划未确认」一起禁用；服务端会以 409 `STAGE_LOCKED` 拒绝，但按钮本身该更早置灰
+- 章节计划整阶段重生成且你确认覆盖后，按目标字数的分配记录会清零（已有正文或已锁定的章跳过，可从修订历史找回）
+- 写作页的详情请求没有单独超时；主快照请求有 15 秒上限，超时按断网计入 3 次重试
+- 并发按单进程假设：同一份 `studio.db` 只被一个进程使用，任务控制表在进程内存 + DB 状态，没有分布式锁
+- 真实供应商只做过一次手工重放（DeepSeek Key，返回可解析的企划 JSON）；其余 15 家请用 `pnpm test:providers` 自测
+- 旧作品迁移没有真实正样本：安装版库里唯一的旧长篇是空壳孤儿，验收是在临时数据目录里用旧接口现造旧作品（`scripts/api-test.mjs` 里 `POST /api/projects` + `PATCH /api/chapters`），没有真实用户库样本
+- 迁移账本行（`revisions.note='迁移前章节清单'`）仍会随项目包导出，只是不出现在修订历史里
 
 ## 参考
 

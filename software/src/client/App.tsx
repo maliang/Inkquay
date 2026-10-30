@@ -9,6 +9,7 @@ import { CodexPage } from './pages/CodexPage';
 import { ScreenplayPage } from './pages/ScreenplayPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { OnboardingPage } from './pages/OnboardingPage';
+import { PipelinePage } from './pages/PipelinePage';
 
 /**
  * 剧本项目不能落在章节写作台（那是「0 章 0 字」的空壳）。
@@ -63,6 +64,7 @@ export function App() {
     <Routes>
       <Route path="/" element={<LibraryPage />} />
       <Route path="/project/:projectId" element={<StudioRoute />} />
+      <Route path="/project/:projectId/pipeline" element={<PipelinePage />} />
       <Route path="/project/:projectId/outline" element={<OutlinePage />} />
       <Route path="/project/:projectId/codex" element={<CodexPage />} />
       <Route path="/project/:projectId/screenplay" element={<ScreenplayPage />} />

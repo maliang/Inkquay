@@ -4,7 +4,7 @@ import { Rail } from './Rail';
 export function AppShell({
   active, projectId, topbar, panel, children,
 }: {
-  active: 'library' | 'studio' | 'outline' | 'codex' | 'screenplay';
+  active: 'library' | 'pipeline' | 'studio' | 'outline' | 'codex' | 'screenplay';
   projectId?: string | null;
   topbar: ReactNode;
   panel?: ReactNode;
